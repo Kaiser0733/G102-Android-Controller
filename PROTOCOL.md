@@ -57,9 +57,10 @@ on power-cycle; it does NOT modify onboard memory.
 ### 2. RGB OFF = solid color 00 00 00 (long report)
 
 ```
-11 FF 0E 1B 00 01 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00
-│  │  │  │  │  │  └───────┬───────┘ ... └──┬──────┘
-│  │  │  │  │  │  RGB at bytes 6..8      apply flag at byte 17
+11 FF 0E 1B 00 01 00 00 00 00 00 00 00 00 00 00 01 00 00 00
+│  │  │  │  │  │  │  │  │  └─ bytes 9..15 zero    └─┬─┘└─┬─┘
+│  │  │  │  │  │  └─┴─┴─ RGB at bytes 6..8   apply  bytes 17..19 zero
+│  │  │  │  │  │                                 flag at byte 16
 │  │  │  │  │  └─ 01 = solid-color effect variant
 │  │  │  │  └─ 00 = padding
 │  │  │  └─ 1B = set-color-effect function

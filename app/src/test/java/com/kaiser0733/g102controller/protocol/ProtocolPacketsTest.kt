@@ -49,7 +49,8 @@ class ProtocolPacketsTest {
         assertEquals(0x0E, ProtocolPackets.u8(p[2]))   // feature index
         assertEquals(0x1B, ProtocolPackets.u8(p[3]))  // set-color-effect function
         assertEquals(0x01, ProtocolPackets.u8(p[5]))  // solid-color effect variant
-        assertEquals(0x01, ProtocolPackets.u8(p[17])) // apply flag
+        assertEquals(0x01, ProtocolPackets.u8(p[16])) // apply flag — byte 16 per reference vector
+        assertEquals(0x00, ProtocolPackets.u8(p[17])) // tail stays zero
     }
 
     @Test fun solidPacket_rgbPayloadAtOffsets6to8() {

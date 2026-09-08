@@ -93,9 +93,9 @@ object ProtocolPackets {
             p[6] = red.toByte()
             p[7] = green.toByte()
             p[8] = blue.toByte()
-            // bytes 9..16 stay zero
-            p[17] = APPLY_FLAG.toByte()
-            // bytes 18..19 stay zero
+            // bytes 9..15 stay zero
+            p[16] = APPLY_FLAG.toByte() // verified against reference vector — byte 16, NOT 17
+            // bytes 17..19 stay zero
         }
     }
 
