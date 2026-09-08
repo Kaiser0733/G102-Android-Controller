@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Plain framework dark Material theme: no AndroidX, no compat layer (DECISIONS.md D6).
+         Console-utility look: near-black background, one calm mint accent, that's it. -->
+    <style name="Theme.G102" parent="android:Theme.Material">
+        <item name="android:colorBackground">@color/bg</item>
+        <item name="android:windowBackground">@color/bg</item>
+        <item name="android:colorAccent">@color/accent</item>
+        <item name="android:textColorPrimary">@color/text_primary</item>
+        <item name="android:textColorSecondary">@color/text_muted</item>
+    </style>
+</resources>

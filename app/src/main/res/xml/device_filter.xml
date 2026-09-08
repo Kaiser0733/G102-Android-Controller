@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Match any Logitech device: VID 0x046D = 1133 decimal. Product IDs are a runtime
+         preference list (see LogitechUsbManager), never a gate — so every Logitech gadget
+         the user plugs in still reaches the diagnostics screen. -->
+    <usb-device vendor-id="1133" />
+</resources>

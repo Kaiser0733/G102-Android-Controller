@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">G102 Controller</string>
+    <string name="subtitle">LIGHTSYNC RGB control — runtime only</string>
+    <string name="btn_grant_usb">GRANT USB ACCESS</string>
+    <string name="btn_rgb_off">TURN RGB OFF</string>
+    <string name="btn_diagnostics_toggle">USB DIAGNOSTICS ▾</string>
+    <string name="btn_copy_diagnostics">COPY DIAGNOSTICS</string>
+    <string name="btn_share_diagnostics">SHARE DIAGNOSTICS</string>
+    <string name="no_device">No Logitech USB device detected. Connect the G102 via OTG.</string>
+    <string name="status_unknown">RGB mode: Unknown</string>
+    <string name="status_busy">Working…</string>
+    <string name="diag_copied">Diagnostics copied to clipboard</string>
+    <string name="diag_empty">No diagnostics yet — nothing has happened.</string>
+    <string name="footnote">v%1$s — runtime lighting control only. RGB state may reset after
+        disconnect or power cycle. No firmware or onboard-memory modification.</string>
+</resources>
