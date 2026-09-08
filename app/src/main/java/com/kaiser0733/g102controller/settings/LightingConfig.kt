@@ -32,13 +32,27 @@ data class LightingConfig(
             val parts = raw.split(SEPARATOR)
             if (parts.size != 6) return null
             return try {
+                val effect = parts[0]
+                val color = parts[1].removePrefix("#").toInt(16)
+                val brightness = parts[2].toInt()
+                val rate = parts[3].toInt()
+                val direction = parts[4].toInt()
+                val zones = parts[5].split(",").map { it.toInt(16) }
+                val wellFormed = effect in ALL_EFFECTS &&
+                    color in 0..0xFFFFFF &&
+                    brightness in 0..100 &&
+                    rate in com.kaiser0733.g102controller.protocol.LightSyncEffects.RATE_MIN_MS..
+                        com.kaiser0733.g102controller.protocol.LightSyncEffects.RATE_MAX_MS &&
+                    (direction == 1 || direction == 6) &&
+                    zones.size == 3 && zones.all { it in 0..0xFFFFFF }
+                if (!wellFormed) return null
                 LightingConfig(
-                    effect = parts[0],
-                    color = parts[1].removePrefix("#").toInt(16),
-                    brightnessPercent = parts[2].toInt(),
-                    rateMs = parts[3].toInt(),
-                    waveDirection = parts[4].toInt(),
-                    zoneColors = parts[5].split(",").map { it.toInt(16) },
+                    effect = effect,
+                    color = color,
+                    brightnessPercent = brightness,
+                    rateMs = rate,
+                    waveDirection = direction,
+                    zoneColors = zones,
                 )
             } catch (_: Exception) {
                 null

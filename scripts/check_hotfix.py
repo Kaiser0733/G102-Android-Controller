@@ -37,6 +37,8 @@ class HotfixWiring(unittest.TestCase):
         self.assertIn('if (app.commandListener === commandListener) app.commandListener = null', source)
         self.assertIn('app.notifyCommandFinished()', source)
         self.assertIn('setControlsEnabled(!busy)', source)
+        self.assertIn('app.activeDeviceName = deviceSnapshot.deviceName', source)
+        self.assertIn('detached.deviceName == active', source)
         application = (MAIN.parent / 'ControllerApplication.kt').read_text()
         self.assertIn('mainHandler.post { commandListener?.invoke() }', application)
         self.assertNotIn('postDelayed', application)

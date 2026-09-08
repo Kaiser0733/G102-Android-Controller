@@ -14,6 +14,30 @@ import java.util.concurrent.Executor
 import java.util.concurrent.RejectedExecutionException
 
 class RuntimeHotfixTest {
+    @Test fun corruptSavedConfigCannotReachUiOrPacketBuilders() {
+        // 2.0.2 hardening: out-of-range legacy values must never load.
+        for (raw in listOf(
+            "WAVE|ffffff|100|999|1|ff0000,00ff00,0000ff",        // rate below protocol minimum
+            "WAVE|ffffff|100|1000|9|ff0000,00ff00,0000ff",       // invalid direction state
+            "SOLID|1000000|100|1000|1|ff0000,00ff00,0000ff",     // color wider than 24-bit
+            "SOLID|ffffff|-1|1000|1|ff0000,00ff00,0000ff",       // negative brightness
+            "ZONES|ffffff|100|1000|1|ff0000",                    // fewer than 3 zones
+            "ZONES|ffffff|100|1000|1|ff0000,1000000,0000ff",     // a zone wider than 24-bit
+            "BOGUS|ffffff|100|1000|1|ff0000,00ff00,0000ff",      // unknown effect id
+            "WAVE|ffffff|101|1000|1|ff0000,00ff00,0000ff",       // brightness over 100
+            "WAVE|ffffff|100|65536|1|ff0000,00ff00,0000ff",      // rate above protocol maximum
+            "WAVE|ffffff|100|1000|5|ff0000,00ff00,0000ff"       // direction not in {1, 6}
+        )) assertNull(raw, LightingConfig.deserialize(raw))
+        // Valid boundary values still load, including OFF-adjacent black/0%.
+        assertNotNull(LightingConfig.deserialize("SOLID|000000|0|1000|1|000000,000000,0000ff"))
+    }
+
+    @Test fun diagnosticsWorstCaseStaysBelowClipboardBinderBudget() {
+        val buffer = DiagnosticBuffer()
+        repeat(1000) { buffer.add("x".repeat(2000)) }
+        assertTrue(buffer.snapshot().joinToString("\n").length < 260000)
+    }
+
     @Test fun stopCancelsAndResumeNeverRestartsOldWork() {
         val session = CommandSession()
         assertFalse(session.begin())

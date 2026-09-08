@@ -18,6 +18,8 @@ class ControllerApplication : Application() {
     })
     val diagnostics = DiagnosticBuffer()
     @Volatile var lastOutcome: String? = null
+    /** Device name of the accepted in-flight command; null when idle. */
+    @Volatile var activeDeviceName: String? = null
     // Main-thread listener belongs only to the visible Activity, cleared on stop.
     var commandListener: (() -> Unit)? = null
     private val mainHandler = Handler(Looper.getMainLooper())

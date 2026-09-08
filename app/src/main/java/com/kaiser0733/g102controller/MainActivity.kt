@@ -380,6 +380,7 @@ class MainActivity : Activity() {
         }
         if (!session.begin()) return
         val selected = config.serialize()
+        app.activeDeviceName = deviceSnapshot.deviceName
         try {
             val accepted = app.commands.submit(work = {
                 try {
@@ -522,8 +523,18 @@ class MainActivity : Activity() {
                     usb.permissionAction,
                     -> {
                         if (intent.action == UsbManager.ACTION_USB_DEVICE_DETACHED) {
-                            session.detach()
-                            textResult.text = "Mouse detached. Any active sequence is cancelled."
+                            // Only a detach of the DEVICE BEING COMMANDED cancels the
+                            // active sequence — unrelated peripherals must not abort it.
+                            val detached = if (android.os.Build.VERSION.SDK_INT >= 33)
+                                intent.getParcelableExtra(UsbManager.EXTRA_DEVICE, UsbDevice::class.java)
+                            else
+                                @Suppress("DEPRECATION")
+                                intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
+                            val active = app.activeDeviceName
+                            if (detached != null && detached.deviceName == active) {
+                                session.detach()
+                                textResult.text = "Mouse detached. Active command cancelled."
+                            }
                         }
                         onLog("USB event: ${intent.action}; no automatic command.")
                         refreshDeviceState()
