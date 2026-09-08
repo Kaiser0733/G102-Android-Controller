@@ -189,6 +189,10 @@ class MainActivity : Activity() {
             }
             claimedInterface = iface
 
+            // Clear anything the mouse queued before we started (power-on effect,
+            // previous session) so it can't be misread as a command response.
+            usb.drainStaleResponses(connection, iface)
+
             val switchPacket = ProtocolPackets.buildDisableOnboardMemoryPacket()
             val switchResult = usb.sendReportAndRead(connection, iface, switchPacket)
 

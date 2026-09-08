@@ -120,8 +120,15 @@ class LogitechUsbManager(
             .map { device.getInterface(it) }
             .filter { it.interfaceClass == UsbConstants.USB_CLASS_HID }
 
+        // Preference order (adversarial-review hardened):
+        //  1. the classic vendor node: HID class, subclass 0, protocol 0 (G102/G203 iface 1)
+        //  2. any HID interface that is neither the boot mouse (1/2) nor a keyboard (1/1)
+        //  3. the only HID interface, if there is exactly one
+        //  4. the reference implementation's fixed interface index 1
         val vendorNode = hidInterfaces.firstOrNull {
-            !(it.interfaceSubclass == 1 && it.interfaceProtocol == 2)
+            it.interfaceSubclass == 0 && it.interfaceProtocol == 0
+        } ?: hidInterfaces.firstOrNull {
+            !(it.interfaceSubclass == 1 && (it.interfaceProtocol == 1 || it.interfaceProtocol == 2))
         }
         val chosen = vendorNode
             ?: hidInterfaces.takeIf { it.size == 1 }?.first()
@@ -160,7 +167,7 @@ class LogitechUsbManager(
         connection: UsbDeviceConnection,
         iface: UsbInterface,
         report: ByteArray,
-        timeoutMs: Int = 250,
+        timeoutMs: Int = 500,
     ): SendResult {
         val wValue = when (val mapped = ProtocolPackets.wValueForReportSize(report.size)) {
             null -> {
@@ -174,7 +181,7 @@ class LogitechUsbManager(
         // request 0x09 (HID SET_REPORT), wValue = report type|ID, wIndex = interface
         // number, payload = the report bytes. This is the exact shape of the
         // reference's libusb ctrl_transfer(0x21, 0x09, ...).
-        val ifaceIndex = interfaceIndexFor(connection, iface)
+        val ifaceIndex = interfaceIndexFor(iface)
         val sent = connection.controlTransfer(
             /* requestType = */ 0x21,
             /* request = */ 0x09,
@@ -211,12 +218,30 @@ class LogitechUsbManager(
         return SendResult(bytesWritten = sent, response = response)
     }
 
-    private fun interfaceIndexFor(connection: UsbDeviceConnection, iface: UsbInterface): Int {
-        // The interface number Android expects as wIndex is the interface's position
-        // in the device's descriptor list. getId() returns the descriptor bInterfaceNumber,
-        // which is what control transfers must use.
-        return iface.id
+    /**
+     * Drains any reports already sitting in the response endpoint (the reference
+     * implementation's clear_ls_buffer): mouse power-on effects or a previous app
+     * session can leave stale reports queued, which would otherwise be misread as
+     * the response to the next command. Short 10ms timeout per attempt.
+     */
+    fun drainStaleResponses(connection: UsbDeviceConnection, iface: UsbInterface, maxAttempts: Int = 8) {
+        val endpoint = findInEndpoint(iface) ?: return
+        val buf = ByteArray(20)
+        var drained = 0
+        repeat(maxAttempts) {
+            val read = connection.bulkTransfer(endpoint, buf, buf.size, 10)
+            if (read <= 0) return
+            drained++
+            log("Drained stale response: ${ProtocolPackets.toHex(buf.copyOf(read.coerceAtMost(20)))}")
+        }
+        if (drained >= maxAttempts) log("Endpoint still had data after $maxAttempts drains — continuing anyway")
     }
+
+    /**
+     * wIndex for control transfers: the interface's bInterfaceNumber (iface.id),
+     * which is what the device's descriptor table uses — not the enumeration position.
+     */
+    private fun interfaceIndexFor(iface: UsbInterface): Int = iface.id
 
     private fun findInEndpoint(iface: UsbInterface): UsbEndpoint? =
         (0 until iface.endpointCount)
