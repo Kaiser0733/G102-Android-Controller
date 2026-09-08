@@ -2,6 +2,66 @@
 
 Every non-obvious choice, with What / Why / Change-trigger.
 
+## v2 additions
+
+- **D13 — RGB ON = mode switch + saved effect, with a visible floor.**
+  Why: the reference has no separate "on" command — any effect packet
+  re-enables lighting. A solid config at brightness 0 would re-send black,
+  so ON clamps brightness to >=1 and falls back to white if the scaled
+  color is pure black. ON always illuminates.
+  Change-trigger: evidence of a hardware sleep/wake toggle command.
+
+- **D14 — Brightness: native where the protocol has it, RGB-scaling for solid.**
+  Cycle/wave/breathe/blend carry a real brightness byte (verified positions
+  in the reference vectors). Solid does NOT — its brightness is app-side
+  RGB scaling (255*p/100, integer floor), labeled honestly in the UI.
+  Change-trigger: discovery of a solid-brightness byte in protocol traffic.
+
+- **D15 — Effects implemented: Solid, Cycle, Wave, Breathe, Blend, Zones.**
+  All six exist in the reference with verified templates. Wave direction
+  right=0x01 left=0x06; rate is milliseconds (1000-65535), inverted to a
+  0-100 speed slider (high = fast). Brightness clamps to 1..100 because the
+  reference clamps 0 -> 1 (0 is not expressible except via solid black).
+  Change-trigger: physical test showing an effect ID rejected.
+
+- **D16 — Zones via the 0x12 triple command (set + 0x7B apply).**
+  The reference's `triple` command addresses three zones (tags 01/02/03,
+  feature 0x12) and is followed by an apply packet — hard evidence the
+  G102/G203 LIGHTSYNC exposes 3 independently addressable zones. UI cycles
+  each zone through a palette; custom per-zone hex can come later.
+  Change-trigger: physical test showing zones not independently colored.
+
+- **D17 — Live preview debounced at 120ms, solid/breathe paths only.**
+  Why: picker/seekbar churn would flood USB otherwise; 120ms after the last
+  change is responsive and gentle. Effects with rate params apply via the
+  APPLY button only (each change is a full restart of the effect).
+  Change-trigger: physical instability during preview — then APPLY-only mode.
+
+- **D18 — Persistence is app-side only (SharedPreferences).**
+  Saved: color, brightness, effect, rate, direction, zones, auto-apply flag.
+  Never written to mouse EEPROM/onboard memory — power-cycle resets the mouse
+  to its onboard lighting, the app re-applies on demand (or via auto-apply).
+  Change-trigger: never for EEPROM; UI may grow.
+
+- **D19 — Auto-apply is once per connection, never a background service.**
+  When enabled and the mouse (re)attaches with permission while the app is
+  foreground, the saved config is applied once; the guard re-arms on detach.
+  Modern Android makes background USB services unreliable — documented
+  limitation, not silently pretended.
+  Change-trigger: a reliable foreground-service pattern emerges.
+
+- **D20 — Pinned debug keystore, versionCode 2.**
+  Every CI run now signs with the same committed debug keystore, so future
+  APKs install directly over v2. v1 was runner-throwaway-signed, so the
+  one-time v1 -> v2 update requires a single uninstall (last one ever).
+  Change-trigger: production signing (later, with LO's keystore).
+
+- **D21 — Regression pin: the v1 RGB OFF sequence is test-frozen.**
+  `regression_rgbOffSequence_isPhysicallyVerifiedV1` asserts the exact
+  physically-verified bytes; any change to that path fails CI by design.
+
+## v1 decisions (unchanged, preserved)
+
 - **D1 — RGB OFF = solid color (0,0,0), labeled BLACK_FALLBACK.**
   Why: the working reference implementation (smasty/g203-led, MIT) has no
   distinct LED-disable effect for this family; its "off" is solid black, and it
@@ -22,32 +82,27 @@ Every non-obvious choice, with What / Why / Change-trigger.
   Change-trigger: none foreseen; it is part of the known-good sequence.
 
 - **D4 — Interface selection: scan, don't assume index 0.**
-  Selection order: (a) HID-class interface that is NOT subclass 1/protocol 2
-  (plain mouse), (b) the only HID interface if just one exists, (c) reference
-  fallback index 1. The choice and full descriptors go to diagnostics.
-  Why: gaming mice expose several interfaces; the HID++ node on this family is
-  interface 1, but the scan keeps unknown Logitech models workable and honest.
+  Preference order: (a) HID vendor node (subclass 0/protocol 0), (b) any HID
+  interface that is not boot mouse (1/2) or keyboard (1/1), (c) the only HID
+  interface, (d) reference fallback index 1. Full descriptors go to diagnostics.
   Change-trigger: diagnostics from a real device showing the HID++ node
   elsewhere — adjust the scan, never hardcode blindly.
 
 - **D5 — Device discovery: VID 0x046D gate, PID preference list, no PID lock.**
   C092 and C09D are known-good LIGHTSYNC PIDs (sorted first); every other
   Logitech device is still listed and diagnosable but marked "unknown model".
-  Why: spec explicitly forbids a single hardcoded PID; revisions vary.
   Change-trigger: a new LIGHTSYNC PID confirmed by hardware evidence.
 
 - **D6 — Zero runtime dependencies, no AndroidX, plain Activity + XML.**
-  Why: the whole app is one Activity, one USB manager class, one protocol
-  object, one diagnostics formatter. Compose/AndroidX would add a dependency
-  wall for zero benefit. JUnit4 is test-only.
+  Why: the whole app is one Activity, one USB manager class, protocol objects,
+  one diagnostics formatter. Compose/AndroidX would add a dependency wall for
+  zero benefit. JUnit4 is test-only.
   Change-trigger: a second screen or navigation need — then AndroidX, not before.
 
 - **D7 — Toolchain: AGP 8.9.2, Kotlin 2.1.10, Gradle wrapper 8.13, JDK 17,
   compileSdk/targetSdk 35, minSdk 24.**
-  Why: the mutually-compatible verified set from prior successful CI builds;
-  AGP 8.9.x officially pairs with Gradle 8.x and JDK 17; compileSdk 35 is the
-  newest stable AGP 8.9 supports without warnings. minSdk 24 covers the target
-  tablet (Android 16) with margin for older OTG devices.
+  Why: the mutually-compatible verified set; AGP 8.9.x officially pairs with
+  Gradle 8.x and JDK 17; compileSdk 35 is the newest stable AGP 8.9 supports.
   Change-trigger: a newer AGP needing compileSdk 36+ — move the whole matrix
   together, never mix.
 
@@ -71,12 +126,7 @@ Every non-obvious choice, with What / Why / Change-trigger.
   Change-trigger: never.
 
 - **D11 — Diagnostics from day one, COPY + SHARE.**
-  Why: development happens in cloud CI without hardware; the first physical
-  test may fail, and the diagnostics blob is the only evidence channel.
   Change-trigger: none.
 
 - **D12 — Unit tests assert reference-extracted vectors.**
-  Why: tests that merely restate the implementation prove nothing. The
-  known-good hex vectors come from the reference implementation's formatted
-  output, mechanically extracted.
   Change-trigger: none.

@@ -13,11 +13,26 @@ android {
         applicationId = "com.kaiser0733.g102controller"
         minSdk = 24
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "2.0.0"
+    }
+
+    signingConfigs {
+        // Pinned debug keystore: every CI run signs with the SAME key so future APKs
+        // install directly over this version — no delete/reinstall ever again.
+        // (v1 artifacts were runner-throwaway-signed; that required one last uninstall.)
+        create("pinned") {
+            storeFile = rootProject.file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
     }
 
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("pinned")
+        }
         release {
             isMinifyEnabled = false
         }

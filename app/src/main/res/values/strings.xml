@@ -1,9 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">G102 Controller</string>
-    <string name="subtitle">LIGHTSYNC RGB control — runtime only</string>
+    <string name="subtitle">LIGHTSYNC control — runtime only</string>
+    <string name="btn_rgb_on">RGB ON</string>
+    <string name="btn_rgb_off">RGB OFF</string>
     <string name="btn_grant_usb">GRANT USB ACCESS</string>
-    <string name="btn_rgb_off">TURN RGB OFF</string>
+    <string name="color_label">COLOR</string>
+    <string name="hex_hint">#B76E79</string>
+    <string name="btn_apply_color">APPLY COLOR</string>
+    <string name="brightness_label">BRIGHTNESS — %1$d%%</string>
+    <string name="effect_label">EFFECT</string>
+    <string name="btn_apply_effect">APPLY</string>
+    <string name="speed_label">SPEED</string>
+    <string name="direction_label">DIRECTION</string>
+    <string name="zone_label">ZONES (left / middle / right)</string>
     <string name="btn_diagnostics_toggle">USB DIAGNOSTICS ▾</string>
     <string name="btn_copy_diagnostics">COPY DIAGNOSTICS</string>
     <string name="btn_share_diagnostics">SHARE DIAGNOSTICS</string>
@@ -12,6 +22,18 @@
     <string name="status_busy">Working…</string>
     <string name="diag_copied">Diagnostics copied to clipboard</string>
     <string name="diag_empty">No diagnostics yet — nothing has happened.</string>
+    <string name="auto_apply_label">Apply my lighting when mouse connects</string>
+    <string name="brightness_note">Solid uses RGB scaling; other effects use native brightness.</string>
     <string name="footnote">v%1$s — runtime lighting control only. RGB state may reset after
         disconnect or power cycle. No firmware or onboard-memory modification.</string>
+    <string name="direction_right">RIGHT →</string>
+    <string name="direction_left">← LEFT</string>
+    <string-array name="effect_names">
+        <item>Solid</item>
+        <item>Cycle</item>
+        <item>Wave</item>
+        <item>Breathe</item>
+        <item>Blend</item>
+        <item>Zones</item>
+    </string-array>
 </resources>
