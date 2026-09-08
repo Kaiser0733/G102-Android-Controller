@@ -8,9 +8,10 @@ class DiagnosticBuffer(private val capacity: Int = 500) {
 
     @Synchronized fun add(message: String) {
         // Bound individual entries too; a single stack/device dump cannot defeat the cap.
+        // 512 keeps the full 500-line worst case ~256KB — safe for clipboard + TextView.
         message.lineSequence().forEach { line ->
             if (lines.size == capacity) lines.removeFirst()
-            lines.addLast(line.take(1024))
+            lines.addLast(line.take(512))
         }
     }
     @Synchronized fun snapshot(): List<String> = lines.toList()

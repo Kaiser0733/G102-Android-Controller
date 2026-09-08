@@ -133,7 +133,7 @@ class RuntimeHotfixTest {
         buffer.add("old\nnext\n" + "x".repeat(2000))
         assertEquals(2, buffer.snapshot().size)
         assertEquals("next", buffer.snapshot().first())
-        assertEquals(1024, buffer.snapshot().last().length)
+        assertEquals(512, buffer.snapshot().last().length)
     }
 
     @Test fun crashLogCapsNewestBytesAndMigratesOversizedFile() {
