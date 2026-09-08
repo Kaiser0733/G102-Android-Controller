@@ -347,6 +347,12 @@ class MainActivity : Activity() {
         schedulePreview()
     }
 
+    /** Applies the current on-screen config: persists it, then sends it. */
+    private fun applyCurrentConfig() {
+        store.save(config)
+        sendCommandList(RgbCommandComposer.composeModeSwitch() + RgbCommandComposer.composeEffect(config), "APPLY")
+    }
+
     // --- live preview -------------------------------------------------------
 
     /** Debounced: fires 120ms after the latest UI change — no USB flooding. */
@@ -392,7 +398,8 @@ class MainActivity : Activity() {
         }.apply { name = "g102-cmd" }.start()
     }
 
-    private fun runCommandSequence(snapshot: UsbDevice, packets: List<ByteArray>, label: String): String = try {
+    private fun runCommandSequence(snapshot: UsbDevice, packets: List<ByteArray>, label: String): String {
+        return try {
         val device = usb.findLogitechDevices().firstOrNull {
             it.deviceName == snapshot.deviceName
         } ?: return "$label failed: device disappeared."
@@ -434,6 +441,7 @@ class MainActivity : Activity() {
     } catch (t: Throwable) {
         onLog("Sequence error: ${t.javaClass.simpleName}: ${t.message}")
         "$label failed: ${t.javaClass.simpleName}: ${t.message}"
+    }
     }
 
     // honest status text per label — "sent" never claims visual confirmation
