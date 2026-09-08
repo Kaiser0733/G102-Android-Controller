@@ -257,14 +257,7 @@
             android:textColor="@color/text_primary"
             android:textSize="14sp" />
 
-        <!-- AUTO APPLY -->
-        <CheckBox
-            android:id="@+id/checkAutoApply"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            android:text="@string/auto_apply_label"
-            android:textColor="@color/text_muted" />
+
 
         <!-- DIAGNOSTICS -->
         <Button

@@ -2,7 +2,7 @@ name: Android Build
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'hotfix/**']
   workflow_dispatch:
 
 jobs:
@@ -21,6 +21,9 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
 
+      - name: No automatic USB wiring regression
+        run: python3 scripts/check_hotfix.py
+
       - name: Unit tests
         run: ./gradlew testDebugUnitTest --stacktrace
 
@@ -29,6 +32,15 @@ jobs:
 
       - name: Build debug APK
         run: ./gradlew assembleDebug --stacktrace
+
+      - name: Upload verification reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: G102-verification-reports
+          path: |
+            app/build/test-results/testDebugUnitTest/*.xml
+            app/build/reports/lint-results-debug.*
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v7

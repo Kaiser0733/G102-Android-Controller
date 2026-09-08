@@ -18,11 +18,7 @@ class LightingStore(context: Context) {
 
     fun load(): LightingConfig? = LightingConfig.deserialize(prefs.getString(KEY_CONFIG, null))
 
-    fun saveAutoApply(enabled: Boolean) {
-        prefs.edit().putBoolean(KEY_AUTO_APPLY, enabled).apply()
-    }
-
-    fun loadAutoApply(): Boolean = prefs.getBoolean(KEY_AUTO_APPLY, false)
+    fun disableAutoApply() { prefs.edit().remove(KEY_AUTO_APPLY).apply() }
 
     private companion object {
         const val KEY_CONFIG = "config"

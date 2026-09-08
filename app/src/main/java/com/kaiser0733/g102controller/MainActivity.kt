@@ -5,47 +5,35 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
-import android.graphics.Color
 import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbInterface
 import android.hardware.usb.UsbManager
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.text.Editable
 import android.text.TextWatcher
-import android.util.Log
-import android.view.MotionEvent
 import android.view.View
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.Button
-import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
-import android.widget.RadioButton
 import android.widget.RadioGroup
 import android.widget.SeekBar
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
-import com.kaiser0733.g102controller.controller.RgbCommandComposer
+import com.kaiser0733.g102controller.controller.LightingActions
 import com.kaiser0733.g102controller.protocol.ColorUtils
 import com.kaiser0733.g102controller.protocol.LightSyncEffects
-import com.kaiser0733.g102controller.protocol.ProtocolPackets
 import com.kaiser0733.g102controller.settings.LightingConfig
 import com.kaiser0733.g102controller.settings.LightingStore
 import com.kaiser0733.g102controller.usb.LogitechUsbManager
 import com.kaiser0733.g102controller.usb.UsbDiagnostics
-import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 /**
  * v2: full LIGHTSYNC controller — ON/OFF, solid color + hex + presets,
  * brightness (native where available), 5 effects + zones, speed/direction,
- * debounced live preview, app-side persistence, optional auto-apply.
+ * explicit button commands only; configuration edits stay local.
  * The v1 transport path is untouched; every command rides the same
  * proven SET_REPORT lane.
  */
@@ -76,78 +64,60 @@ class MainActivity : Activity() {
     private lateinit var spinnerEffect: Spinner
     private lateinit var radioDirection: RadioGroup
     private lateinit var zoneRow: LinearLayout
-    private lateinit var checkAutoApply: CheckBox
 
-    private val diagLines = mutableListOf<String>()
+    private val app get() = application as ControllerApplication
+    private val diagLines get() = app.diagnostics
     private var diagnosticsVisible = false
-    private var busy = false
+    private val busy get() = app.commands.busy
+    @Volatile private var foreground = false
+    @Volatile private var cancelled = false
+    @Volatile private var lastOutcome: String? = null
     private var suppressWatchers = false
 
-    private companion object {
-        const val CRASH_FILE = "crash.txt"
-    }
 
-    private val timeFormat = SimpleDateFormat("HH:mm:ss.SSS", Locale.US)
-    private val mainHandler = Handler(Looper.getMainLooper())
 
     // Current app-side config (never written to mouse memory)
-    private var config = LightingConfig()
+    private val actions = LightingActions { packets, label -> sendCommandList(packets, label) }
+    private var config: LightingConfig
+        get() = actions.config
+        set(value) { actions.config = value }
 
-    // Debounced live preview: re-arm 120ms after the last change
-    private var previewRunnable: Runnable? = null
-    private val debounceMs = 120L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        installCrashCapture()
         setContentView(R.layout.activity_main)
 
         usb = LogitechUsbManager(this) { line -> onLog(line) }
         store = LightingStore(this)
+        store.disableAutoApply()
         config = store.load() ?: LightingConfig()
 
         bindViews()
         setupControls()
         registerUsbEvents()
         renderConfig()
+        onLog("Launch 2.0.2: explicit commands only; preview and auto-apply disabled.")
     }
 
     override fun onResume() {
         super.onResume()
+        foreground = true
+        lastOutcome?.let { textResult.text = it }
         refreshDeviceState()
-        maybeAutoApply()
+        renderDiagnostics()
+
     }
 
     override fun onStop() {
-        previewRunnable?.let { mainHandler.removeCallbacks(it) } // never send USB while backgrounded
+        foreground = false
+        cancelled = true
+        store.save(config)
         super.onStop()
     }
 
     override fun onDestroy() {
         usb.unregister()
         super.onDestroy()
-    }
-
-    /**
-     * Persists any uncaught exception to crash.txt (app-scoped, no permission
-     * needed) so a physical-device crash can be reported via COPY DIAGNOSTICS.
-     */
-    private fun installCrashCapture() {
-        val previous = Thread.getDefaultUncaughtExceptionHandler()
-        Thread.setDefaultUncaughtExceptionHandler { t, e ->
-            try {
-                val stamp = timeFormat.format(Date())
-                val body = buildString {
-                    append("==== CRASH $stamp thread=${t.name} ====\n")
-                    append(Log.getStackTraceString(e))
-                    append("\nconfig at crash: ${config.serialize()}\n\n")
-                }
-                val dir = getExternalFilesDir(null) ?: filesDir
-                File(dir, CRASH_FILE).appendText(body)
-            } catch (_: Throwable) {
-            }
-            previous?.uncaughtException(t, e)
-        }
     }
 
     // --- view binding -----------------------------------------------------
@@ -179,7 +149,6 @@ class MainActivity : Activity() {
         spinnerEffect = findViewById(R.id.spinnerEffect)
         radioDirection = findViewById(R.id.radioDirection)
         zoneRow = findViewById(R.id.zoneRow)
-        checkAutoApply = findViewById(R.id.checkAutoApply)
     }
 
     // --- control setup ------------------------------------------------------
@@ -189,9 +158,9 @@ class MainActivity : Activity() {
         btnGrantUsb.setOnClickListener {
             currentDevice()?.let { usb.requestPermission(it) }
         }
-        btnRgbOff.setOnClickListener { sendCommandList(RgbCommandComposer.composeRgbOff(), "RGB OFF") }
+        btnRgbOff.setOnClickListener { actions.execute(LightingActions.Action.OFF) }
         btnRgbOn.setOnClickListener {
-            sendCommandList(RgbCommandComposer.composeRgbOn(config), "RGB ON")
+            actions.execute(LightingActions.Action.ON)
         }
         btnApplyColor.setOnClickListener { applyCurrentConfig() }
         btnApplyEffect.setOnClickListener { applyCurrentConfig() }
@@ -204,7 +173,7 @@ class MainActivity : Activity() {
         presets.forEach { color ->
             val swatch = Button(this).apply {
                 layoutParams = LinearLayout.LayoutParams(0, 72).apply { weight = 1f }
-                setBackgroundColor(color)
+                setBackgroundColor(ColorUtils.rgbToAndroidColor(color))
                 contentDescription = ColorUtils.toHexDisplay(color)
                 setOnClickListener { selectColor(color) }
             }
@@ -231,7 +200,7 @@ class MainActivity : Activity() {
                 if (fromUser && !suppressWatchers) {
                     config = config.copy(brightnessPercent = progress)
                     textBrightnessLabel.text = getString(R.string.brightness_label, progress)
-                    schedulePreview()
+
                 }
             }
             override fun onStartTrackingTouch(sb: SeekBar) {}
@@ -242,14 +211,11 @@ class MainActivity : Activity() {
         val names = resources.getStringArray(R.array.effect_names)
         spinnerEffect.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, names)
         spinnerEffect.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            /** Spinner fires onItemSelected once on layout, without user action — swallow it. */
-            private var firstSelection = true
             override fun onItemSelected(parent: AdapterView<*>?, v: View?, pos: Int, id: Long) {
-                if (firstSelection) { firstSelection = false; return }
                 if (suppressWatchers) return
                 config = config.copy(effect = effectNameToConstant(names[pos]))
                 renderEffectControls()
-                schedulePreview()
+
             }
             override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
@@ -260,7 +226,7 @@ class MainActivity : Activity() {
             override fun onProgressChanged(sb: SeekBar, progress: Int, fromUser: Boolean) {
                 if (fromUser && !suppressWatchers) {
                     config = config.copy(rateMs = ColorUtils.sliderToRate(progress))
-                    schedulePreview()
+
                 }
             }
             override fun onStartTrackingTouch(sb: SeekBar) {}
@@ -274,7 +240,7 @@ class MainActivity : Activity() {
                     waveDirection = if (checkedId == R.id.radioRight)
                         LightSyncEffects.WAVE_RIGHT else LightSyncEffects.WAVE_LEFT,
                 )
-                schedulePreview()
+
             }
         }
 
@@ -283,7 +249,7 @@ class MainActivity : Activity() {
         config.zoneColors.forEachIndexed { idx, color ->
             val btn = Button(this).apply {
                 layoutParams = LinearLayout.LayoutParams(0, 72).apply { weight = 1f }
-                setBackgroundColor(color)
+                setBackgroundColor(ColorUtils.rgbToAndroidColor(color))
                 tag = idx
                 contentDescription = "zone $idx"
                 setOnClickListener { self ->
@@ -292,17 +258,11 @@ class MainActivity : Activity() {
                     val next = zonePalette[(zonePalette.indexOfFirst { it == current } + 1) % zonePalette.size]
                     val updated = config.zoneColors.toMutableList().also { it[zoneIndex] = next }
                     config = config.copy(zoneColors = updated)
-                    self.setBackgroundColor(next)
-                    schedulePreview()
+                    self.setBackgroundColor(ColorUtils.rgbToAndroidColor(next))
+
                 }
             }
             zoneRow.addView(btn)
-        }
-
-        // Auto-apply
-        checkAutoApply.isChecked = store.loadAutoApply()
-        checkAutoApply.setOnCheckedChangeListener { _, checked ->
-            store.saveAutoApply(checked)
         }
 
         // Version footnote
@@ -344,18 +304,21 @@ class MainActivity : Activity() {
             else -> 0
         }
         spinnerEffect.setSelection(effectPosition)
-        checkAutoApply.isChecked = store.loadAutoApply()
         suppressWatchers = false
     }
 
     private fun renderColorControls() {
-        colorPreview.setBackgroundColor(config.color)
+        colorPreview.setBackgroundColor(ColorUtils.rgbToAndroidColor(config.color))
         val hexText = ColorUtils.toHexDisplay(config.color)
         if (editHex.text.toString() != hexText) {
+            val wasSuppressed = suppressWatchers
             suppressWatchers = true
-            editHex.setText(hexText)
-            editHex.setSelection(hexText.length)
-            suppressWatchers = false
+            try {
+                editHex.setText(hexText)
+                editHex.setSelection(hexText.length)
+            } finally {
+                suppressWatchers = wasSuppressed
+            }
         }
     }
 
@@ -382,62 +345,65 @@ class MainActivity : Activity() {
     private fun selectColor(color: Int) {
         config = config.copy(color = color)
         renderColorControls()
-        schedulePreview()
+
     }
 
     /** Applies the current on-screen config: persists it, then sends it. */
     private fun applyCurrentConfig() {
         store.save(config)
-        sendCommandList(RgbCommandComposer.composeModeSwitch() + RgbCommandComposer.composeEffect(config), "APPLY")
-    }
-
-    // --- live preview -------------------------------------------------------
-
-    /** Debounced: fires 120ms after the latest UI change — no USB flooding. */
-    private fun schedulePreview() {
-        previewRunnable?.let { mainHandler.removeCallbacks(it) }
-        previewRunnable = Runnable {
-            if (!busy) sendCommandList(composePreviewPackets(), "PREVIEW")
-        }.also { mainHandler.postDelayed(it, debounceMs) }
-    }
-
-    /** Solid/breathe preview only — effects with cycles would flood on every tweak. */
-    private fun composePreviewPackets(): List<ByteArray> = when (config.effect) {
-        LightingConfig.EFFECT_SOLID -> listOf(
-            ProtocolPackets.buildDisableOnboardMemoryPacket(),
-            ProtocolPackets.buildSolidColorPacket(
-                ColorUtils.red(ColorUtils.scaleForBrightness(config.color, config.brightnessPercent)),
-                ColorUtils.green(ColorUtils.scaleForBrightness(config.color, config.brightnessPercent)),
-                ColorUtils.blue(ColorUtils.scaleForBrightness(config.color, config.brightnessPercent)),
-            ),
-        )
-        else -> RgbCommandComposer.composeEffect(config) // cycle/wave/breathe/blend/zones: apply only
+        actions.execute(LightingActions.Action.APPLY)
     }
 
     // --- USB command sending ---------------------------------------------------
 
     private fun sendCommandList(packets: List<ByteArray>, label: String) {
-        if (busy) return
+        if (!foreground || busy) return
         val deviceSnapshot = currentDevice() ?: run {
             textResult.text = getString(R.string.no_device)
             return
         }
-        busy = true
-        setControlsEnabled(false)
-        textResult.text = getString(R.string.status_busy)
-        Thread {
-            val outcome = runCommandSequence(deviceSnapshot, packets, label)
-            runOnUiThread {
-                busy = false
-                setControlsEnabled(true)
-                textResult.text = outcome
-                refreshDeviceState()
+        if (!usb.hasPermission(deviceSnapshot)) {
+            textResult.text = "$label not sent: USB permission required."
+            refreshDeviceState()
+            return
+        }
+        cancelled = false
+        val selected = config.serialize()
+        try {
+            val accepted = app.commands.submit(work = {
+                try {
+                    onLog(UsbDiagnostics.describeDevice(deviceSnapshot))
+                    onLog("Explicit $label config=$selected")
+                    lastOutcome = runCommandSequence(deviceSnapshot, packets, label)
+                    onLog(lastOutcome.orEmpty())
+                } catch (failure: Exception) {
+                    lastOutcome = "$label failed: ${failure.javaClass.simpleName}: ${failure.message}"
+                    onLog(lastOutcome.orEmpty())
+                }
+            }, finished = {
+                runOnUiThread {
+                    if (!isDestroyed && foreground) {
+                        textResult.text = lastOutcome ?: "$label ended."
+                        refreshDeviceState()
+                        renderDiagnostics()
+                    }
+                }
+            })
+            if (accepted) {
+                setControlsEnabled(false)
+                textResult.text = getString(R.string.status_busy)
             }
-        }.apply { name = "g102-cmd" }.start()
+        } catch (failure: RuntimeException) {
+            lastOutcome = "$label could not start: ${failure.message}"
+            textResult.text = lastOutcome
+            onLog(lastOutcome.orEmpty())
+            refreshDeviceState()
+        }
     }
 
     private fun runCommandSequence(snapshot: UsbDevice, packets: List<ByteArray>, label: String): String {
         return try {
+        if (cancelled || !foreground) return "$label cancelled: Activity stopped."
         val device = usb.findLogitechDevices().firstOrNull {
             it.deviceName == snapshot.deviceName
         } ?: return "$label failed: device disappeared."
@@ -452,19 +418,22 @@ class MainActivity : Activity() {
             val iface = usb.selectHidppInterface(device)
                 ?: return "$label failed: no HID++ interface — copy diagnostics."
 
+            if (cancelled || !foreground) return "$label cancelled before claim."
             if (!usb.claimInterface(connection, iface)) {
                 return "$label failed: could not claim interface — copy diagnostics."
             }
             claimedInterface = iface
+            if (cancelled || !foreground) return "$label cancelled after claim."
             usb.drainStaleResponses(connection, iface)
 
             var lastWriteCount = -1
             var anyError: String? = null
             for (packet in packets) {
+                if (cancelled || !foreground) return "$label cancelled: stopped or detached."
                 val result = usb.sendReportAndRead(connection, iface, packet)
                 lastWriteCount = result.bytesWritten
-                if (result.error != null) {
-                    anyError = result.error
+                if (result.error != null || result.bytesWritten != packet.size) {
+                    anyError = result.error ?: "short transfer ${result.bytesWritten}/${packet.size}"
                     break
                 }
             }
@@ -485,25 +454,8 @@ class MainActivity : Activity() {
     // honest status text per label — "sent" never claims visual confirmation
     private fun successTextFor(label: String): String = when (label) {
         "RGB OFF" -> "RGB OFF command sent successfully (solid 0,0,0 — BLACK_FALLBACK)."
-        "RGB ON" -> "RGB ON command sent successfully (${config.effect.lowercase()} restored)."
-        "PREVIEW" -> "Preview sent (${config.effect.lowercase()})."
-        else -> "$label command sent successfully (${config.effect.lowercase()})."
-    }
-
-    // --- auto-apply ------------------------------------------------------------
-
-    /** One-shot per connection: (re)applying only when the mouse freshly attaches. */
-    private var autoAppliedForConnection = false
-
-    private fun maybeAutoApply() {
-        if (!store.loadAutoApply()) return
-        if (autoAppliedForConnection) return
-        val device = currentDevice() ?: return
-        if (!usb.hasPermission(device)) return
-        if (busy) return
-        autoAppliedForConnection = true
-        onLog("Auto-apply: applying saved config on (re)connect")
-        sendCommandList(RgbCommandComposer.composeRgbOn(config), "RGB ON")
+        "RGB ON" -> "RGB ON command sent; confirm lighting on the mouse."
+        else -> "$label command sent; confirm lighting on the mouse."
     }
 
     // --- device state ------------------------------------------------------------
@@ -526,7 +478,8 @@ class MainActivity : Activity() {
             else -> {
                 renderDevice(device)
                 btnGrantUsb.visibility = View.GONE
-                setControlsEnabled(!busy)
+                // Global gate rejects busy taps, including across Activity recreation.
+                setControlsEnabled(true)
             }
         }
     }
@@ -542,7 +495,7 @@ class MainActivity : Activity() {
                 device.vendorId, device.productId, known, device.deviceName,
             )
         if (diagLines.isEmpty()) {
-            diagLines += UsbDiagnostics.describeDevice(device)
+            diagLines.add(UsbDiagnostics.describeDevice(device))
             renderDiagnostics()
         }
     }
@@ -565,12 +518,11 @@ class MainActivity : Activity() {
                     usb.permissionAction,
                     -> {
                         if (intent.action == UsbManager.ACTION_USB_DEVICE_DETACHED) {
-                            autoAppliedForConnection = false // replug re-arms auto-apply
+                            cancelled = true
+                            textResult.text = "Mouse detached. Any active sequence is cancelled."
                         }
+                        onLog("USB event: ${intent.action}; no automatic command.")
                         refreshDeviceState()
-                        if (intent.action == UsbManager.ACTION_USB_DEVICE_ATTACHED) {
-                            maybeAutoApply()
-                        }
                     }
                 }
             }
@@ -580,16 +532,14 @@ class MainActivity : Activity() {
     // --- diagnostics ----------------------------------------------------------
 
     private fun onLog(line: String) {
-        runOnUiThread {
-            diagLines += "[%s] %s".format(timeFormat.format(Date()), line)
-            renderDiagnostics()
-        }
+        diagLines.add("[${System.currentTimeMillis()}] $line")
+        // No per-packet UI posts. Render at command completion or when diagnostics opens.
     }
 
     private fun renderDiagnostics() {
         if (diagnosticsVisible) {
             textDiagnostics.visibility = View.VISIBLE
-            textDiagnostics.text = diagLines.joinToString("\n").ifEmpty { getString(R.string.diag_empty) }
+            textDiagnostics.text = diagLines.snapshot().joinToString("\n").ifEmpty { getString(R.string.diag_empty) }
         }
     }
 
@@ -607,7 +557,7 @@ class MainActivity : Activity() {
     }
 
     private fun textRowEmptyCheck() {
-        textDiagnostics.text = diagLines.joinToString("\n").ifEmpty { getString(R.string.diag_empty) }
+        textDiagnostics.text = diagLines.snapshot().joinToString("\n").ifEmpty { getString(R.string.diag_empty) }
     }
 
     private fun copyDiagnostics() {
@@ -625,13 +575,13 @@ class MainActivity : Activity() {
     }
 
     private fun diagnosticsReport(): String {
-        val dir = getExternalFilesDir(null) ?: filesDir
-        val crash = File(dir, CRASH_FILE)
-        val crashSection = if (crash.exists()) {
-            "\n==== CRASHES (crash.txt) ====\n" + crash.readText().take(4000)
-        } else {
-            ""
+        val crashes = try { app.crashLog.read() } catch (failure: Exception) {
+            "Crash log unavailable: ${failure.message}"
         }
-        return diagLines.joinToString("\n") + crashSection
+        return "G102 Controller 2.0.2 (4)\nExplicit commands only; auto-apply disabled.\n" +
+            "Busy=$busy foreground=$foreground cancelled=$cancelled\n" +
+            "Selected=${config.serialize()}\nLast outcome=$lastOutcome\n" +
+            diagLines.snapshot().joinToString("\n") + "\n==== CRASHES ====\n" + crashes
     }
+
 }

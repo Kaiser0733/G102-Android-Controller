@@ -8,6 +8,8 @@ package com.kaiser0733.g102controller.protocol
  */
 object ColorUtils {
 
+    fun rgbToAndroidColor(rgb: Int): Int = 0xFF000000.toInt() or (rgb and 0x00FFFFFF)
+
     /** Parses "#B76E79", "b76e79", "#b76e79" — null when malformed. */
     fun parseHexColor(input: String): Int? {
         val s = input.trim().removePrefix("#")
