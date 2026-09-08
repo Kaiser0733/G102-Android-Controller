@@ -14,6 +14,8 @@ import android.os.Handler
 import android.os.Looper
 import android.text.Editable
 import android.text.TextWatcher
+import android.util.Log
+import android.view.MotionEvent
 import android.view.View
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
@@ -35,6 +37,7 @@ import com.kaiser0733.g102controller.settings.LightingConfig
 import com.kaiser0733.g102controller.settings.LightingStore
 import com.kaiser0733.g102controller.usb.LogitechUsbManager
 import com.kaiser0733.g102controller.usb.UsbDiagnostics
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -80,6 +83,10 @@ class MainActivity : Activity() {
     private var busy = false
     private var suppressWatchers = false
 
+    private companion object {
+        const val CRASH_FILE = "crash.txt"
+    }
+
     private val timeFormat = SimpleDateFormat("HH:mm:ss.SSS", Locale.US)
     private val mainHandler = Handler(Looper.getMainLooper())
 
@@ -92,6 +99,7 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        installCrashCapture()
         setContentView(R.layout.activity_main)
 
         usb = LogitechUsbManager(this) { line -> onLog(line) }
@@ -110,9 +118,36 @@ class MainActivity : Activity() {
         maybeAutoApply()
     }
 
+    override fun onStop() {
+        previewRunnable?.let { mainHandler.removeCallbacks(it) } // never send USB while backgrounded
+        super.onStop()
+    }
+
     override fun onDestroy() {
         usb.unregister()
         super.onDestroy()
+    }
+
+    /**
+     * Persists any uncaught exception to crash.txt (app-scoped, no permission
+     * needed) so a physical-device crash can be reported via COPY DIAGNOSTICS.
+     */
+    private fun installCrashCapture() {
+        val previous = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { t, e ->
+            try {
+                val stamp = timeFormat.format(Date())
+                val body = buildString {
+                    append("==== CRASH $stamp thread=${t.name} ====\n")
+                    append(Log.getStackTraceString(e))
+                    append("\nconfig at crash: ${config.serialize()}\n\n")
+                }
+                val dir = getExternalFilesDir(null) ?: filesDir
+                File(dir, CRASH_FILE).appendText(body)
+            } catch (_: Throwable) {
+            }
+            previous?.uncaughtException(t, e)
+        }
     }
 
     // --- view binding -----------------------------------------------------
@@ -207,7 +242,10 @@ class MainActivity : Activity() {
         val names = resources.getStringArray(R.array.effect_names)
         spinnerEffect.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, names)
         spinnerEffect.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            /** Spinner fires onItemSelected once on layout, without user action — swallow it. */
+            private var firstSelection = true
             override fun onItemSelected(parent: AdapterView<*>?, v: View?, pos: Int, id: Long) {
+                if (firstSelection) { firstSelection = false; return }
                 if (suppressWatchers) return
                 config = config.copy(effect = effectNameToConstant(names[pos]))
                 renderEffectControls()
@@ -586,5 +624,14 @@ class MainActivity : Activity() {
         startActivity(Intent.createChooser(send, null))
     }
 
-    private fun diagnosticsReport(): String = diagLines.joinToString("\n")
+    private fun diagnosticsReport(): String {
+        val dir = getExternalFilesDir(null) ?: filesDir
+        val crash = File(dir, CRASH_FILE)
+        val crashSection = if (crash.exists()) {
+            "\n==== CRASHES (crash.txt) ====\n" + crash.readText().take(4000)
+        } else {
+            ""
+        }
+        return diagLines.joinToString("\n") + crashSection
+    }
 }
