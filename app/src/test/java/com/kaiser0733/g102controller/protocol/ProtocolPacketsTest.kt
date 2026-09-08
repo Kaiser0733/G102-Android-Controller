@@ -113,12 +113,18 @@ class ProtocolPacketsTest {
     // --- Response parsing -----------------------------------------------------------
 
     @Test fun shortReportResponse_isRecognized() {
-        val resp = byteArrayOf(0x10, 0xFF, 0x0E, 0x5B, 0x01, 0x03, 0x05)
+        val resp = byteArrayOf(
+            0x10.toByte(), 0xFF.toByte(), 0x0E.toByte(),
+            0x5B.toByte(), 0x01.toByte(), 0x03.toByte(), 0x05.toByte(),
+        )
         assertTrue(ProtocolPackets.isShortReportResponse(resp))
     }
 
     @Test fun shortReportResponse_rejectsWrongFeature() {
-        val resp = byteArrayOf(0x10, 0xFF, 0x1F, 0x5B, 0x01, 0x03, 0x05)
+        val resp = byteArrayOf(
+            0x10.toByte(), 0xFF.toByte(), 0x1F.toByte(),
+            0x5B.toByte(), 0x01.toByte(), 0x03.toByte(), 0x05.toByte(),
+        )
         assertFalse(ProtocolPackets.isShortReportResponse(resp))
     }
 
