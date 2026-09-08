@@ -638,7 +638,7 @@ class MainActivity : Activity() {
         }
         val version = try {
             val info = packageManager.getPackageInfo(packageName, 0)
-            "${info.versionName} (${info.longVersionCode})"
+            "${info.versionName} (${info.versionCode})"
         } catch (_: Exception) {
             "unknown"
         }
