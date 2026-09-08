@@ -51,7 +51,7 @@ class LightSyncEffectsTest {
             hex(LightSyncEffects.buildSolidPacket(0, 0, 0)),
         )
         assertEquals(
-            "11ff0e1b0001ffffff000000000000000001000000",
+            "11ff0e1b0001ffffff0000000000000001000000",
             hex(LightSyncEffects.buildSolidPacket(0xFF, 0xFF, 0xFF)),
         )
     }
@@ -175,7 +175,7 @@ class LightSyncEffectsTest {
     @Test fun rgbOn_unknownEffect_fallsBackToSafeWhite() {
         val config = LightingConfig(effect = "GARBAGE")
         val packets = RgbCommandComposer.composeRgbOn(config)
-        assertEquals("11ff0e1b0001ffffff000000000000000001000000", hex(packets[1]))
+        assertEquals("11ff0e1b0001ffffff0000000000000001000000", hex(packets[1]))
     }
 
     @Test fun composeEffect_solidAppliesSoftwareBrightness() {
@@ -184,7 +184,7 @@ class LightSyncEffectsTest {
         val packets = RgbCommandComposer.composeEffect(config)
         assertEquals(1, packets.size)
         // 255*50/100 = 127 (0x7F) per channel — integer math, documented behavior
-        assertEquals("11ff0e1b00017f7f7f000000000000000001000000", hex(packets[0]))
+        assertEquals("11ff0e1b00017f7f7f0000000000000001000000", hex(packets[0]))
     }
 
     // ===== hex parser =====

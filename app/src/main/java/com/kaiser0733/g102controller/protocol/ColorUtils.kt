@@ -52,6 +52,7 @@ object ColorUtils {
     /** 0..100 slider position -> milliseconds (inverse of [rateToSlider]). */
     fun sliderToRate(slider: Int): Int {
         val s = slider.coerceIn(0, 100)
-        return 65535 - ((100 - s) * (65535 - 1000)) / 100
+        return LightSyncEffects.RATE_MIN_MS +
+            ((100 - s) * (LightSyncEffects.RATE_MAX_MS - LightSyncEffects.RATE_MIN_MS)) / 100
     }
 }
