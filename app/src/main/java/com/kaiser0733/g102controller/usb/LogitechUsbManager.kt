@@ -221,7 +221,7 @@ class LogitechUsbManager(
     private fun findInEndpoint(iface: UsbInterface): UsbEndpoint? =
         (0 until iface.endpointCount)
             .map { iface.getEndpoint(it) }
-            .firstOrNull { it.direction == UsbConstants.USB_DIR_IN && it.type == UsbConstants.USB_ENDPOINT_XFER_INTERRUPT }
+            .firstOrNull { it.direction == UsbConstants.USB_DIR_IN && it.type == UsbConstants.USB_ENDPOINT_XFER_INT }
 
     // --- Connection lifecycle -------------------------------------------------------
 

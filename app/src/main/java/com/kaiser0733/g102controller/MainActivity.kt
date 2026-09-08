@@ -167,7 +167,8 @@ class MainActivity : Activity() {
      * UsbDevice objects on reconnect), opens, selects the HID++ interface, sends
      * the mode switch + solid black, and closes everything again.
      */
-    private fun runOffSequence(snapshot: UsbDevice): String = try {
+    private fun runOffSequence(snapshot: UsbDevice): String {
+        return try {
         val device = usb.findLogitechDevices().firstOrNull {
             it.deviceName == snapshot.deviceName
         } ?: return "RGB OFF failed: device disappeared before the command could run."
@@ -201,6 +202,7 @@ class MainActivity : Activity() {
     } catch (t: Throwable) {
         onLog("Sequence error: ${t.javaClass.simpleName}: ${t.message}")
         "RGB OFF failed: ${t.javaClass.simpleName}: ${t.message}"
+    }
     }
 
     /**

@@ -52,7 +52,7 @@ object UsbDiagnostics {
         UsbConstants.USB_ENDPOINT_XFER_CONTROL -> "CONTROL"
         UsbConstants.USB_ENDPOINT_XFER_ISOC -> "ISOCHRONOUS"
         UsbConstants.USB_ENDPOINT_XFER_BULK -> "BULK"
-        UsbConstants.USB_ENDPOINT_XFER_INTERRUPT -> "INTERRUPT"
+        UsbConstants.USB_ENDPOINT_XFER_INT -> "INTERRUPT"
         else -> "UNKNOWN($type)"
     }
 
