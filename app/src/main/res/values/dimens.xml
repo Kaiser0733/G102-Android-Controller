@@ -16,4 +16,7 @@
     <dimen name="zone_height">72dp</dimen>
     <!-- Two-column gap for landscape layouts -->
     <dimen name="column_gap">24dp</dimen>
+    <!-- Base defaults so lint/lookup never crashes; phone layouts use match_parent and ignore these -->
+    <dimen name="content_max_width">480dp</dimen>
+    <dimen name="row_max_width">480dp</dimen>
 </resources>
