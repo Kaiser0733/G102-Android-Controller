@@ -2,7 +2,27 @@
 
 Every non-obvious choice, with What / Why / Change-trigger.
 
-## v2 additions
+## 2.0.2 hotfix decisions (supersede D17 and D19)
+
+- Remove live USB preview entirely. Every configuration callback changes local
+  state only. ON/OFF/APPLY are the only lighting-command entry points. Physical
+  pointer instability followed the preview release, but its mechanism remains
+  unproven; do not equate removal of a suspect path with hardware confirmation.
+- Disable auto-apply and remove the old preference. The old guard was scoped
+  to an Activity, not a physical USB connection, so recreation could reapply.
+- Keep the baseline USB manager and protocol builders byte-identical. Add only
+  admission/cancellation checks around the existing finite command sequence.
+- One Application-owned executor and atomic command gate reject busy taps;
+  no queue of user commands. Stop/detach cancel subsequent work. An already
+  entered synchronous USB call finishes within its existing Android timeout;
+  the finally block releases/closes the connection, without blocking the UI.
+- Diagnostics retain 500 lines, with each line bounded. Crash files retain the
+  newest 64 KiB, including truncation of oversized logs left by 2.0.1. Install
+  crash handling once in Application, never once per Activity.
+- Convert 24-bit RGB to opaque ARGB only at View boundaries. Protocol RGB and
+  all OFF bytes/order stay unchanged. Version 2.0.2 / code 4 retains signing.
+
+## v2 additions (historical; hotfix overrides above)
 
 - **D13 — RGB ON = mode switch + saved effect, with a visible floor.**
   Why: the reference has no separate "on" command — any effect packet

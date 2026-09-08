@@ -19,7 +19,9 @@ signing = run(str(tools / 'apksigner'), 'verify', '--print-certs', str(apk))
 certificate = subprocess.check_output(['keytool', '-exportcert', '-keystore', 'debug.keystore',
     '-storepass', 'android', '-alias', 'androiddebugkey'])
 expected = hashlib.sha256(certificate).hexdigest()
-assert f'Signer #1 certificate SHA-256 digest: {expected}' in signing, signing
+digests = [line.split('certificate SHA-256 digest: ', 1)[1]
+    for line in signing.splitlines() if 'certificate SHA-256 digest: ' in line]
+assert digests and set(digests) == {expected}, signing
 receipt = '\n'.join([badging, signing, 'APK SHA-256: ' + hashlib.sha256(apk.read_bytes()).hexdigest(),
     'Pinned certificate matches debug.keystore: PASS']) + '\n'
 print(receipt)

@@ -33,6 +33,13 @@ class HotfixWiring(unittest.TestCase):
         self.assertIn('if (!session.canContinue)', source)
         self.assertIn('} finally {\n            usb.close(connection, claimedInterface)', source)
         self.assertNotIn('loadAutoApply', source)
+        self.assertIn('app.commandListener = commandListener', source)
+        self.assertIn('if (app.commandListener === commandListener) app.commandListener = null', source)
+        self.assertIn('app.notifyCommandFinished()', source)
+        self.assertIn('setControlsEnabled(!busy)', source)
+        application = (MAIN.parent / 'ControllerApplication.kt').read_text()
+        self.assertIn('mainHandler.post { commandListener?.invoke() }', application)
+        self.assertNotIn('postDelayed', application)
 
     def test_android_swatches_are_opaque(self):
         calls = [line.strip() for line in MAIN.read_text().splitlines() if 'setBackgroundColor(' in line]

@@ -73,7 +73,17 @@ class MainActivity : Activity() {
     private val session = CommandSession()
     private val foreground get() = session.foreground
     private val cancelled get() = session.cancelled
-    @Volatile private var lastOutcome: String? = null
+    private var lastOutcome: String?
+        get() = app.lastOutcome
+        set(value) { app.lastOutcome = value }
+    private val commandListener: () -> Unit = {
+        if (foreground && !isDestroyed) {
+            textResult.text = if (busy) getString(R.string.status_busy)
+                else lastOutcome ?: getString(R.string.status_unknown)
+            refreshDeviceState()
+            renderDiagnostics()
+        }
+    }
     private var suppressWatchers = false
 
 
@@ -104,14 +114,14 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
         session.resume()
-        lastOutcome?.let { textResult.text = it }
-        refreshDeviceState()
-        renderDiagnostics()
+        app.commandListener = commandListener
+        commandListener()
 
     }
 
     override fun onStop() {
         session.stop()
+        if (app.commandListener === commandListener) app.commandListener = null
         store.save(config)
         super.onStop()
     }
@@ -382,13 +392,7 @@ class MainActivity : Activity() {
                     onLog(lastOutcome.orEmpty())
                 }
             }, finished = {
-                runOnUiThread {
-                    if (!isDestroyed && foreground) {
-                        textResult.text = lastOutcome ?: "$label ended."
-                        refreshDeviceState()
-                        renderDiagnostics()
-                    }
-                }
+                app.notifyCommandFinished()
             })
             if (accepted) {
                 setControlsEnabled(false)
@@ -479,8 +483,7 @@ class MainActivity : Activity() {
             else -> {
                 renderDevice(device)
                 btnGrantUsb.visibility = View.GONE
-                // Global gate rejects busy taps, including across Activity recreation.
-                setControlsEnabled(true)
+                setControlsEnabled(!busy)
             }
         }
     }

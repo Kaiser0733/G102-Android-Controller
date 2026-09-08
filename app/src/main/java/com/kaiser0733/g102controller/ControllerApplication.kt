@@ -2,6 +2,8 @@ package com.kaiser0733.g102controller
 
 import android.app.Application
 import android.os.Process
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import com.kaiser0733.g102controller.controller.CommandGate
 import com.kaiser0733.g102controller.diagnostics.CrashLog
@@ -15,6 +17,15 @@ class ControllerApplication : Application() {
         Thread(task, "g102-command").apply { isDaemon = true }
     })
     val diagnostics = DiagnosticBuffer()
+    @Volatile var lastOutcome: String? = null
+    // Main-thread listener belongs only to the visible Activity, cleared on stop.
+    var commandListener: (() -> Unit)? = null
+    private val mainHandler = Handler(Looper.getMainLooper())
+
+    fun notifyCommandFinished() {
+        mainHandler.post { commandListener?.invoke() }
+    }
+
     lateinit var crashLog: CrashLog
         private set
 
