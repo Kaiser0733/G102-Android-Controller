@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Spacing scale -->
+    <dimen name="space_xs">4dp</dimen>
+    <dimen name="space_sm">8dp</dimen>
+    <dimen name="space_md">12dp</dimen>
+    <dimen name="space_lg">16dp</dimen>
+    <dimen name="space_xl">24dp</dimen>
+    <!-- Section separation -->
+    <dimen name="section_gap">16dp</dimen>
+    <!-- Content padding -->
+    <dimen name="screen_padding">20dp</dimen>
+    <!-- Color swatch sizing (buttons added programmatically) -->
+    <dimen name="preview_height">48dp</dimen>
+    <dimen name="swatch_size">52dp</dimen>
+    <dimen name="zone_height">72dp</dimen>
+    <!-- Two-column gap for landscape layouts -->
+    <dimen name="column_gap">24dp</dimen>
+</resources>

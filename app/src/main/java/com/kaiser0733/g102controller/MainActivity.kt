@@ -85,6 +85,8 @@ class MainActivity : Activity() {
         }
     }
     private var suppressWatchers = false
+    /** Tracks which orientation qualifier layout is currently inflated. */
+    private var lastLayoutOrientation = -1
 
 
 
@@ -97,6 +99,7 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        lastLayoutOrientation = resources.configuration.orientation
         setContentView(R.layout.activity_main)
 
         usb = LogitechUsbManager(this) { line -> onLog(line) }
@@ -108,7 +111,37 @@ class MainActivity : Activity() {
         setupControls()
         registerUsbEvents()
         renderConfig()
-        onLog("Launch 2.0.2: explicit commands only; preview and auto-apply disabled.")
+        onLog("Launch 2.1.0: explicit commands only; preview and auto-apply disabled.")
+    }
+
+    /**
+     * Rotation re-inflation. configChanges in the manifest means Android will NOT
+     * recreate the Activity — so qualifier layouts (layout-land, layout-sw600dp) would
+     * otherwise never apply on rotate. This re-inflates ONLY on a genuine orientation
+     * change. Purely presentational: no USB command, no config change, no listener churn —
+     * buttons keep their references and all hardware logic is untouched.
+     */
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        val newOrientation = newConfig.orientation
+        if (newOrientation != lastLayoutOrientation) {
+            lastLayoutOrientation = newOrientation
+            // Preserve an in-progress hex draft across the re-inflation.
+            val hexDraft = editHex.text?.toString().orEmpty()
+            val hadFocus = editHex.hasFocus()
+            setContentView(R.layout.activity_main)
+            bindViews()
+            setupControls()
+            renderConfig()
+            if (ColorUtils.parseHexColor(hexDraft) == null && hexDraft.isNotEmpty()) {
+                // Incomplete draft never reached config — restore it verbatim.
+                suppressWatchers = true
+                editHex.setText(hexDraft)
+                editHex.setSelection(hexDraft.length)
+                suppressWatchers = false
+                if (hadFocus) editHex.requestFocus()
+            }
+        }
     }
 
     override fun onResume() {
@@ -179,16 +212,22 @@ class MainActivity : Activity() {
         btnCopyDiagnostics.setOnClickListener { copyDiagnostics() }
         btnShareDiagnostics.setOnClickListener { shareDiagnostics() }
 
-        // Presets
+        // Presets — 4x2 grid (GridLayout section container); dimen-driven swatch size
         val presets = intArrayOf(0xFF0000, 0x00FF00, 0x0000FF, 0x800080, 0x00FFFF, 0xFFA500, 0xFFC0CB, 0xFFFFFF)
+        val swatchSize = resources.getDimensionPixelSize(R.dimen.swatch_size)
         presets.forEach { color ->
             val swatch = Button(this).apply {
-                layoutParams = LinearLayout.LayoutParams(0, 72).apply { weight = 1f }
+                layoutParams = android.widget.GridLayout.LayoutParams().apply {
+                    width = 0
+                    height = swatchSize
+                    columnSpec = android.widget.GridLayout.spec(android.widget.GridLayout.UNDEFINED, 1f)
+                    topMargin = resources.getDimensionPixelSize(R.dimen.space_xs)
+                }
                 setBackgroundColor(ColorUtils.rgbToAndroidColor(color))
                 contentDescription = ColorUtils.toHexDisplay(color)
                 setOnClickListener { selectColor(color) }
             }
-            findViewById<LinearLayout>(R.id.presetRow).addView(swatch)
+            findViewById<android.widget.GridLayout>(R.id.presetRow).addView(swatch)
         }
 
         // Hex input
@@ -257,9 +296,13 @@ class MainActivity : Activity() {
 
         // Zones: three mini pickers cycling a curated palette (simple, no dialogs)
         val zonePalette = intArrayOf(0xFF0000, 0x00FF00, 0x0000FF, 0xFF00FF, 0x00FFFF, 0xFFFF00, 0xFFFFFF, 0x000000)
+        val zoneHeight = resources.getDimensionPixelSize(R.dimen.zone_height)
         config.zoneColors.forEachIndexed { idx, color ->
             val btn = Button(this).apply {
-                layoutParams = LinearLayout.LayoutParams(0, 72).apply { weight = 1f }
+                layoutParams = LinearLayout.LayoutParams(0, zoneHeight).apply {
+                    weight = 1f
+                    marginEnd = if (idx < 2) resources.getDimensionPixelSize(R.dimen.space_xs) else 0
+                }
                 setBackgroundColor(ColorUtils.rgbToAndroidColor(color))
                 tag = idx
                 contentDescription = "zone $idx"
@@ -349,7 +392,7 @@ class MainActivity : Activity() {
         zoneRow.visibility = if (showZones) View.VISIBLE else View.GONE
         textZoneLabel.visibility = if (showZones) View.VISIBLE else View.GONE
         colorPreview.visibility = if (showColor) View.VISIBLE else View.GONE
-        findViewById<LinearLayout>(R.id.presetRow).visibility = if (showColor) View.VISIBLE else View.GONE
+        findViewById<android.widget.GridLayout>(R.id.presetRow).visibility = if (showColor) View.VISIBLE else View.GONE
         btnApplyColor.visibility = if (showColor) View.VISIBLE else View.GONE
     }
 
@@ -593,7 +636,13 @@ class MainActivity : Activity() {
         val crashes = try { app.crashLog.read() } catch (failure: Exception) {
             "Crash log unavailable: ${failure.message}"
         }
-        return "G102 Controller 2.0.2 (4)\nExplicit commands only; auto-apply disabled.\n" +
+        val version = try {
+            val info = packageManager.getPackageInfo(packageName, 0)
+            "${info.versionName} (${info.longVersionCode})"
+        } catch (_: Exception) {
+            "unknown"
+        }
+        return "G102 Controller $version\nExplicit commands only; auto-apply disabled.\n" +
             "Busy=$busy foreground=$foreground cancelled=$cancelled\n" +
             "Selected=${config.serialize()}\nLast outcome=$lastOutcome\n" +
             diagLines.snapshot().joinToString("\n") + "\n==== CRASHES ====\n" + crashes

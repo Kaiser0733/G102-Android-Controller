@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="@dimen/section_gap"
+    android:orientation="vertical">
+
+    <Button
+        android:id="@+id/btnToggleDiagnostics"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/space_sm"
+        android:text="@string/btn_diagnostics_toggle" />
+
+    <TextView
+        android:id="@+id/textDiagnostics"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/space_sm"
+        android:background="@color/surface"
+        android:fontFamily="monospace"
+        android:padding="@dimen/space_md"
+        android:textColor="@color/diag_text"
+        android:textSize="12sp"
+        android:visibility="gone" />
+
+    <Button
+        android:id="@+id/btnCopyDiagnostics"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/space_sm"
+        android:text="@string/btn_copy_diagnostics" />
+
+    <Button
+        android:id="@+id/btnShareDiagnostics"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/btn_share_diagnostics" />
+</LinearLayout>

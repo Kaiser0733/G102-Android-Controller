@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="@dimen/section_gap"
+    android:orientation="vertical">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/space_xs"
+        android:text="@string/color_label"
+        android:textColor="@color/text_muted"
+        android:textSize="12sp"
+        android:textStyle="bold" />
+
+    <View
+        android:id="@+id/colorPreview"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/preview_height"
+        android:layout_marginBottom="@dimen/space_sm"
+        android:background="#FFFFFF" />
+
+    <!-- 4-column grid; swatches are added programmatically (2 rows of 4) -->
+    <GridLayout
+        android:id="@+id/presetRow"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/space_sm"
+        android:columnCount="4"
+        android:useDefaultMargins="false" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <EditText
+            android:id="@+id/editHex"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="@dimen/space_sm"
+            android:layout_weight="1"
+            android:fontFamily="monospace"
+            android:hint="@string/hex_hint"
+            android:importantForAutofill="no"
+            android:inputType="textCapCharacters"
+            android:maxLength="7"
+            android:textColor="@color/text_primary"
+            android:textColorHint="@color/text_muted" />
+
+        <Button
+            android:id="@+id/btnApplyColor"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:enabled="false"
+            android:text="@string/btn_apply_color" />
+    </LinearLayout>
+</LinearLayout>

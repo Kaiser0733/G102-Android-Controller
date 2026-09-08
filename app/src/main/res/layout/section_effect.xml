@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="@dimen/section_gap"
+    android:orientation="vertical">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/space_xs"
+        android:text="@string/effect_label"
+        android:textColor="@color/text_muted"
+        android:textSize="12sp"
+        android:textStyle="bold" />
+
+    <Spinner
+        android:id="@+id/spinnerEffect"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/space_sm" />
+
+    <TextView
+        android:id="@+id/textSpeedLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/space_xs"
+        android:textColor="@color/text_muted"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:visibility="gone" />
+
+    <SeekBar
+        android:id="@+id/seekSpeed"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/space_sm"
+        android:max="100"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/textDirectionLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/space_xs"
+        android:textColor="@color/text_muted"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:visibility="gone" />
+
+    <RadioGroup
+        android:id="@+id/radioDirection"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/space_sm"
+        android:orientation="horizontal"
+        android:visibility="gone">
+
+        <RadioButton
+            android:id="@+id/radioRight"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="@dimen/space_md"
+            android:text="@string/direction_right"
+            android:textColor="@color/text_primary" />
+
+        <RadioButton
+            android:id="@+id/radioLeft"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/direction_left"
+            android:textColor="@color/text_primary" />
+    </RadioGroup>
+
+    <TextView
+        android:id="@+id/textZoneLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/space_xs"
+        android:textColor="@color/text_muted"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:visibility="gone" />
+
+    <LinearLayout
+        android:id="@+id/zoneRow"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/space_sm"
+        android:orientation="horizontal"
+        android:visibility="gone" />
+
+    <Button
+        android:id="@+id/btnApplyEffect"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:enabled="false"
+        android:text="@string/btn_apply_effect" />
+</LinearLayout>

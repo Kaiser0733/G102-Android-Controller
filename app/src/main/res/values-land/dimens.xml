@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Landscape phones: tighter vertical rhythm, denser sections -->
+    <dimen name="section_gap">12dp</dimen>
+    <dimen name="screen_padding">16dp</dimen>
+    <dimen name="preview_height">40dp</dimen>
+    <dimen name="swatch_size">48dp</dimen>
+    <dimen name="column_gap">20dp</dimen>
+</resources>

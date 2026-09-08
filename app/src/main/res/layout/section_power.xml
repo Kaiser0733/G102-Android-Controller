@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="@dimen/section_gap"
+    android:orientation="horizontal">
+
+    <Button
+        android:id="@+id/btnRgbOn"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="@dimen/space_xs"
+        android:layout_weight="1"
+        android:enabled="false"
+        android:text="@string/btn_rgb_on" />
+
+    <Button
+        android:id="@+id/btnRgbOff"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/space_xs"
+        android:layout_weight="1"
+        android:enabled="false"
+        android:text="@string/btn_rgb_off" />
+</LinearLayout>

@@ -24,6 +24,9 @@ jobs:
       - name: No automatic USB wiring regression
         run: python3 scripts/check_hotfix.py
 
+      - name: Responsive layout structure guard
+        run: python3 scripts/check_layouts.py
+
       - name: Unit tests
         run: ./gradlew testDebugUnitTest --stacktrace
 
