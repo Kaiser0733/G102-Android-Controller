@@ -1,6 +1,7 @@
 package com.kaiser0733.g102controller
 
 import com.kaiser0733.g102controller.controller.CommandGate
+import com.kaiser0733.g102controller.controller.CommandSession
 import com.kaiser0733.g102controller.controller.LightingActions
 import com.kaiser0733.g102controller.diagnostics.CrashLog
 import com.kaiser0733.g102controller.diagnostics.DiagnosticBuffer
@@ -13,6 +14,48 @@ import java.util.concurrent.Executor
 import java.util.concurrent.RejectedExecutionException
 
 class RuntimeHotfixTest {
+    @Test fun stopCancelsAndResumeNeverRestartsOldWork() {
+        val session = CommandSession()
+        assertFalse(session.begin())
+        session.resume()
+        assertFalse(session.canContinue)
+        assertTrue(session.begin())
+        assertTrue(session.canContinue)
+        session.stop()
+        assertFalse(session.canContinue)
+        session.resume()
+        assertFalse(session.canContinue)
+        assertTrue(session.begin())
+    }
+
+    @Test fun detachStopsRemainingPacketsAndReconnectDoesNotStartWork() {
+        val session = CommandSession()
+        session.resume()
+        session.begin()
+        var packets = 0
+        repeat(3) {
+            if (session.canContinue) { packets++; session.detach() }
+        }
+        assertEquals(1, packets)
+        session.resume()
+        assertFalse(session.canContinue)
+        assertTrue(session.begin())
+    }
+
+    @Test fun stoppedQueuedCommandNeverTouchesHardware() {
+        val queue = mutableListOf<Runnable>()
+        val gate = CommandGate(Executor { queue.add(it) })
+        val session = CommandSession()
+        session.resume()
+        session.begin()
+        var packets = 0
+        gate.submit({ if (session.canContinue) packets++ }, {})
+        session.stop()
+        queue.single().run()
+        assertEquals(0, packets)
+        assertFalse(gate.busy)
+    }
+
     @Test fun configurationEventsNeverSend() {
         var sends = 0
         val controls = LightingActions { _, _ -> sends++ }
@@ -101,6 +144,19 @@ class RuntimeHotfixTest {
         assertEquals(1, completed)
         assertTrue(gate.submit({}, {}))
         queue.removeAt(0).run()
+    }
+
+    @Test fun simultaneousCallersAdmitOnlyOneSequence() {
+        val queued = java.util.concurrent.ConcurrentLinkedQueue<Runnable>()
+        val gate = CommandGate(Executor { queued.add(it) })
+        val callers = java.util.concurrent.Executors.newFixedThreadPool(8)
+        try {
+            val attempts = (1..100).map { callers.submit<Boolean> { gate.submit({}, {}) } }
+            assertEquals(1, attempts.count { it.get(5, java.util.concurrent.TimeUnit.SECONDS) })
+            assertEquals(1, queued.size)
+            queued.remove().run()
+            assertFalse(gate.busy)
+        } finally { callers.shutdownNow() }
     }
 
     @Test fun throwingWorkerAlwaysReleasesGate() {

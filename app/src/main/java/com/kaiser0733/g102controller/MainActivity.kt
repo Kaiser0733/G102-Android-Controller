@@ -23,6 +23,7 @@ import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import com.kaiser0733.g102controller.controller.LightingActions
+import com.kaiser0733.g102controller.controller.CommandSession
 import com.kaiser0733.g102controller.protocol.ColorUtils
 import com.kaiser0733.g102controller.protocol.LightSyncEffects
 import com.kaiser0733.g102controller.settings.LightingConfig
@@ -69,8 +70,9 @@ class MainActivity : Activity() {
     private val diagLines get() = app.diagnostics
     private var diagnosticsVisible = false
     private val busy get() = app.commands.busy
-    @Volatile private var foreground = false
-    @Volatile private var cancelled = false
+    private val session = CommandSession()
+    private val foreground get() = session.foreground
+    private val cancelled get() = session.cancelled
     @Volatile private var lastOutcome: String? = null
     private var suppressWatchers = false
 
@@ -101,7 +103,7 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
-        foreground = true
+        session.resume()
         lastOutcome?.let { textResult.text = it }
         refreshDeviceState()
         renderDiagnostics()
@@ -109,8 +111,7 @@ class MainActivity : Activity() {
     }
 
     override fun onStop() {
-        foreground = false
-        cancelled = true
+        session.stop()
         store.save(config)
         super.onStop()
     }
@@ -367,7 +368,7 @@ class MainActivity : Activity() {
             refreshDeviceState()
             return
         }
-        cancelled = false
+        if (!session.begin()) return
         val selected = config.serialize()
         try {
             val accepted = app.commands.submit(work = {
@@ -403,7 +404,7 @@ class MainActivity : Activity() {
 
     private fun runCommandSequence(snapshot: UsbDevice, packets: List<ByteArray>, label: String): String {
         return try {
-        if (cancelled || !foreground) return "$label cancelled: Activity stopped."
+        if (!session.canContinue) return "$label cancelled: Activity stopped."
         val device = usb.findLogitechDevices().firstOrNull {
             it.deviceName == snapshot.deviceName
         } ?: return "$label failed: device disappeared."
@@ -418,18 +419,18 @@ class MainActivity : Activity() {
             val iface = usb.selectHidppInterface(device)
                 ?: return "$label failed: no HID++ interface — copy diagnostics."
 
-            if (cancelled || !foreground) return "$label cancelled before claim."
+            if (!session.canContinue) return "$label cancelled before claim."
             if (!usb.claimInterface(connection, iface)) {
                 return "$label failed: could not claim interface — copy diagnostics."
             }
             claimedInterface = iface
-            if (cancelled || !foreground) return "$label cancelled after claim."
+            if (!session.canContinue) return "$label cancelled after claim."
             usb.drainStaleResponses(connection, iface)
 
             var lastWriteCount = -1
             var anyError: String? = null
             for (packet in packets) {
-                if (cancelled || !foreground) return "$label cancelled: stopped or detached."
+                if (!session.canContinue) return "$label cancelled: stopped or detached."
                 val result = usb.sendReportAndRead(connection, iface, packet)
                 lastWriteCount = result.bytesWritten
                 if (result.error != null || result.bytesWritten != packet.size) {
@@ -518,7 +519,7 @@ class MainActivity : Activity() {
                     usb.permissionAction,
                     -> {
                         if (intent.action == UsbManager.ACTION_USB_DEVICE_DETACHED) {
-                            cancelled = true
+                            session.detach()
                             textResult.text = "Mouse detached. Any active sequence is cancelled."
                         }
                         onLog("USB event: ${intent.action}; no automatic command.")

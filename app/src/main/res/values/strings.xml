@@ -22,7 +22,6 @@
     <string name="status_busy">Working…</string>
     <string name="diag_copied">Diagnostics copied to clipboard</string>
     <string name="diag_empty">No diagnostics yet — nothing has happened.</string>
-    <string name="auto_apply_label">Apply my lighting when mouse connects</string>
     <string name="brightness_note">Solid uses RGB scaling; other effects use native brightness.</string>
     <string name="footnote">v%1$s — runtime lighting control only. RGB state may reset after
         disconnect or power cycle. No firmware or onboard-memory modification.</string>
