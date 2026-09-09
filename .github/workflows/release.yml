@@ -96,6 +96,13 @@ jobs:
             mouse model, VID/PID (from the app's USB diagnostics), Android
             device/version — real compatibility data is what this beta is
             for.
+
+            ## Reproducibility
+            - Source commit: `${{ github.sha }}`
+            - Build: GitHub Actions, Gradle 8.13, AGP 8.9.2, Kotlin 2.1.10,
+              JDK 17, compileSdk/targetSdk 35
+            - versionName 2.2.0 / versionCode 7
+            - APK checksum: see attached .sha256
           files: |
             app/build/outputs/apk/debug/app-debug.apk
             app/build/outputs/apk/debug/app-debug.apk.sha256

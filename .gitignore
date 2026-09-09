@@ -9,5 +9,7 @@ captures/
 .externalNativeBuild/
 .cxx/
 *.apk
+# decoded production keystore from CI secrets (never committed)
+release.keystore
 # receipts evidence ledger (machine-local)
 .receipts/

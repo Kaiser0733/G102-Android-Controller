@@ -40,8 +40,28 @@ jobs:
       - name: Build debug APK
         run: ./gradlew assembleDebug --stacktrace
 
+      - name: Decode production keystore (if configured)
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
+            printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > release.keystore
+            echo "ANDROID_KEYSTORE_FILE=release.keystore" >> "$GITHUB_ENV"
+            echo "Production keystore decoded (contents never logged)."
+          else
+            echo "No production keystore secret configured — release APK will be UNSIGNED."
+          fi
+
       - name: Build release APK (unsigned unless secrets present)
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: ./gradlew assembleRelease --stacktrace
+
+      - name: Remove decoded keystore
+        if: always()
+        run: rm -f release.keystore
 
       - name: Verify APK identity and pinned signature
         run: python3 scripts/verify_apk.py
