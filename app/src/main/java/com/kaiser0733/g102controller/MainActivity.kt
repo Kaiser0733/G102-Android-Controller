@@ -133,6 +133,18 @@ class MainActivity : Activity() {
             bindViews()
             setupControls()
             renderConfig()
+            // Fresh views come back with XML defaults (buttons disabled, status text
+            // reset). Re-run the same read-only state refresh onResume uses so the
+            // landscape layout reflects the live device/session state. No USB command
+            // is sent; refreshDeviceState only reads.
+            if (foreground) {
+                commandListener()
+            }
+            // Restore the diagnostics panel's open/closed state on the fresh views.
+            if (diagnosticsVisible) {
+                btnToggleDiagnostics.text = getString(R.string.btn_diagnostics_toggle).replace("▾", "▴")
+                renderDiagnostics()
+            }
             if (ColorUtils.parseHexColor(hexDraft) == null && hexDraft.isNotEmpty()) {
                 // Incomplete draft never reached config — restore it verbatim.
                 suppressWatchers = true
