@@ -46,7 +46,7 @@ derivative work of upstream code:
 - MIT matches the licenses of the ecosystem this project builds on and keeps
   community contribution friction low.
 - It permits commercial use, dual licensing, and relicensing by the
-  copyright holder (see [COMMERCIALIZATION_NOTES.md](COMMERCIALIZATION_NOTES.md)).
+  copyright holder.
 
 ## Required notices when redistributing
 

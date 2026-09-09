@@ -1,187 +1,111 @@
-# DECISIONS.md
+# Design decisions
 
-Every non-obvious choice, with What / Why / Change-trigger.
+Short records of the choices that shape the app. Format: decision, reason,
+and the trigger that would reopen it.
 
-## Public-release decisions (2.2.0-beta)
+## Runtime safety
 
-- **D22 — Public beta = 2.2.0 (code 7), app behavior byte-identical to
-  2.1.1-stable-physical.** The release-readiness branch changes only
-  documentation, licensing, CI, and release engineering; the version bump
-  is metadata so the public artifact is distinguishable and installable
-  over 2.1.1 (same pinned debug key). The physically verified baseline
-  remains tag `v2.1.1-stable-physical` (commit `c1c4cc1`); the usb/,
-  protocol/, controller/ trees are diff-verified untouched.
-  Change-trigger: any functional app change before release would require
-  re-verification.
+### Explicit commands only
 
-- **D23 — License: MIT.** All incorporated/consulted upstreams are MIT
-  (g203-led, libratbag) or Apache-2.0 (Kotlin stdlib, Android SDK);
-  nothing forces copyleft. Protocol facts are interoperability knowledge,
-  reimplemented in original Kotlin. See LICENSE, LICENSING.md,
-  THIRD_PARTY_NOTICES.md. Change-trigger: incorporation of copyleft code
-  (do not).
+Live USB preview sent lighting packets on every UI event. On a real device
+(Tab A9+, Android 16, mouse doubling as the system pointer) this coincided
+with duplicated cursor ghosts and escalating lag, so the preview path was
+removed entirely. Only ON, OFF, and APPLY initiate USB traffic; startup,
+resume, rotation, reconnection, and configuration rendering are USB-silent.
+CI enforces this (`scripts/check_hotfix.py`).
 
-- **D24 — Production signing via GitHub Actions Secrets, never in git.**
-  The committed debug keystore stays for beta continuity only; release.yml
-  signs from ANDROID_KEYSTORE_BASE64/PASSWORD/ALIAS/KEY_PASSWORD secrets
-  when present, otherwise produces a clearly-labeled UNSIGNED artifact.
-  Never silent debug fallback for release. See RELEASE_SIGNING.md.
+### One command at a time
 
-- **D25 — Unofficial project, nominative naming.** "Logitech", "G102",
-  "LIGHTSYNC" used only for compatibility identification; every public
-  surface carries the no-affiliation disclaimer. Display name stays
-  "G102 Controller" (descriptive, nominative); applicationId never changes.
-  Change-trigger: legal complaint or a stronger public brand name.
+A single application-owned command gate rejects concurrent attempts. An
+in-flight transfer finishes within its existing Android timeout; remaining
+packets are cancelled and the connection is released in `finally`.
 
-- **D26 — Privacy posture = zero permissions.** The manifest declares no
-  permissions (not even INTERNET); no analytics/telemetry/accounts exist
-  and none may be added (PR checklist + review). See PRIVACY.md.
+### RGB OFF is regression-tested
 
-## 2.0.2 hotfix decisions (supersede D17 and D19)
+The off sequence (mode switch `10 ff 0e 5b 01 03 05` + solid black) is
+asserted byte-for-byte in `rgbOffSequence_matchesKnownGoodVector`. Any
+change to those bytes fails CI.
 
-- Remove live USB preview entirely. Every configuration callback changes local
-  state only. ON/OFF/APPLY are the only lighting-command entry points. Physical
-  pointer instability followed the preview release, but its mechanism remains
-  unproven; do not equate removal of a suspect path with hardware confirmation.
-- Disable auto-apply and remove the old preference. The old guard was scoped
-  to an Activity, not a physical USB connection, so recreation could reapply.
-- Keep the baseline USB manager and protocol builders byte-identical. Add only
-  admission/cancellation checks around the existing finite command sequence.
-- One Application-owned executor and atomic command gate reject busy taps;
-  no queue of user commands. Stop/detach cancel subsequent work. An already
-  entered synchronous USB call finishes within its existing Android timeout;
-  the finally block releases/closes the connection, without blocking the UI.
-- Diagnostics retain 500 lines, with each line bounded. Crash files retain the
-  newest 64 KiB, including truncation of oversized logs left by 2.0.1. Install
-  crash handling once in Application, never once per Activity.
-- Convert 24-bit RGB to opaque ARGB only at View boundaries. Protocol RGB and
-  all OFF bytes/order stay unchanged. Version 2.0.2 / code 4 retains signing.
+### No firmware writes
 
-## v2 additions (historical; hotfix overrides above)
+Commands are runtime lighting control only. No firmware flashing, no
+onboard-memory writes, nothing persistent — power-cycling the mouse
+restores its saved lighting.
 
-- **D13 — RGB ON = mode switch + saved effect, with a visible floor.**
-  Why: the reference has no separate "on" command — any effect packet
-  re-enables lighting. A solid config at brightness 0 would re-send black,
-  so ON clamps brightness to >=1 and falls back to white if the scaled
-  color is pure black. ON always illuminates.
-  Change-trigger: evidence of a hardware sleep/wake toggle command.
+## Protocol
 
-- **D14 — Brightness: native where the protocol has it, RGB-scaling for solid.**
-  Cycle/wave/breathe/blend carry a real brightness byte (verified positions
-  in the reference vectors). Solid does NOT — its brightness is app-side
-  RGB scaling (255*p/100, integer floor), labeled honestly in the UI.
-  Change-trigger: discovery of a solid-brightness byte in protocol traffic.
+### Off = solid black (no true-off command)
 
-- **D15 — Effects implemented: Solid, Cycle, Wave, Breathe, Blend, Zones.**
-  All six exist in the reference with verified templates. Wave direction
-  right=0x01 left=0x06; rate is milliseconds (1000-65535), inverted to a
-  0-100 speed slider (high = fast). Brightness clamps to 1..100 because the
-  reference clamps 0 -> 1 (0 is not expressible except via solid black).
-  Change-trigger: physical test showing an effect ID rejected.
+The reference implementation (smasty/g203-led) has no distinct LED-disable
+effect for this family; off is solid black, labeled as such in the UI.
 
-- **D16 — Zones via the 0x12 triple command (set + 0x7B apply).**
-  The reference's `triple` command addresses three zones (tags 01/02/03,
-  feature 0x12) and is followed by an apply packet — hard evidence the
-  G102/G203 LIGHTSYNC exposes 3 independently addressable zones. UI cycles
-  each zone through a palette; custom per-zone hex can come later.
-  Change-trigger: physical test showing zones not independently colored.
+### Transport = HID SET_REPORT control transfers
 
-- **D17 — Live preview debounced at 120ms, solid/breathe paths only.**
-  Why: picker/seekbar churn would flood USB otherwise; 120ms after the last
-  change is responsive and gentle. Effects with rate params apply via the
-  APPLY button only (each change is a full restart of the effect).
-  Change-trigger: physical instability during preview — then APPLY-only mode.
+Exactly what the reference does on real hardware (libusb
+ctrl_transfer 0x21/0x09/0x0210|0x0211/wIndex=1), mapped to Android's
+`UsbDeviceConnection.controlTransfer`. The device replies on the claimed
+interface's interrupt IN endpoint.
 
-- **D18 — Persistence is app-side only (SharedPreferences).**
-  Saved: color, brightness, effect, rate, direction, zones, auto-apply flag.
-  Never written to mouse EEPROM/onboard memory — power-cycle resets the mouse
-  to its onboard lighting, the app re-applies on demand (or via auto-apply).
-  Change-trigger: never for EEPROM; UI may grow.
+### Interface selection scans descriptors
 
-- **D19 — Auto-apply is once per connection, never a background service.**
-  When enabled and the mouse (re)attaches with permission while the app is
-  foreground, the saved config is applied once; the guard re-arms on detach.
-  Modern Android makes background USB services unreliable — documented
-  limitation, not silently pretended.
-  Change-trigger: a reliable foreground-service pattern emerges.
+The HID++ vendor node is found by descriptor walk (vendor subclass 0 /
+protocol 0 first), never hardcoded — except the reference's fallback index 1.
 
-- **D20 — Pinned debug keystore, versionCode 2.**
-  Every CI run now signs with the same committed debug keystore, so future
-  APKs install directly over v2. v1 was runner-throwaway-signed, so the
-  one-time v1 -> v2 update requires a single uninstall (last one ever).
-  Change-trigger: production signing (later, with LO's keystore).
+### Solid brightness is RGB scaling
 
-- **D21 — Regression pin: the v1 RGB OFF sequence is test-frozen.**
-  `regression_rgbOffSequence_isPhysicallyVerifiedV1` asserts the exact
-  physically-verified bytes; any change to that path fails CI by design.
+The protocol has a native brightness byte for cycle-class effects only.
+Solid color brightness is app-side RGB scaling, labeled honestly in the UI.
 
-## v1 decisions (unchanged, preserved)
+### Effects
 
-- **D1 — RGB OFF = solid color (0,0,0), labeled BLACK_FALLBACK.**
-  Why: the working reference implementation (smasty/g203-led, MIT) has no
-  distinct LED-disable effect for this family; its "off" is solid black, and it
-  demonstrably drives real LIGHTSYNC hardware. The UI never claims TRUE_OFF.
-  Change-trigger: evidence of a genuine disable effect for the G102 (from
-  device responses or protocol docs) — then implement and label TRUE_OFF.
+Solid, Cycle, Wave (direction 01=right / 06=left), Breathe, Blend, Zones
+(3 zones via feature 0x12). Rate is milliseconds, inverted to a 0-100 speed
+slider. Brightness clamps to 1-100 because 0 is only expressible as solid
+black.
 
-- **D2 — Transport = HID SET_REPORT control transfers, wIndex = interface 1.**
-  Why: exactly what the reference does on real hardware (libusb ctrl_transfer
-  0x21/0x09/0x0210|0x0211/wIndex=1). Android's equivalent is
-  UsbDeviceConnection.controlTransfer with iface.id as index.
-  Change-trigger: physical-device diagnostics showing control transfers
-  rejected (negative/short writes) — then try interrupt OUT if an endpoint exists.
+## App architecture
 
-- **D3 — Mode switch sent before the color command, every time.**
-  Why: the reference always sends `10 ff 0e 5b 01 03 05` first; without it the
-  onboard lighting overrides the runtime color. Reversible, runtime-only.
-  Change-trigger: none foreseen; it is part of the known-good sequence.
+### Zero runtime dependencies
 
-- **D4 — Interface selection: scan, don't assume index 0.**
-  Preference order: (a) HID vendor node (subclass 0/protocol 0), (b) any HID
-  interface that is not boot mouse (1/2) or keyboard (1/1), (c) the only HID
-  interface, (d) reference fallback index 1. Full descriptors go to diagnostics.
-  Change-trigger: diagnostics from a real device showing the HID++ node
-  elsewhere — adjust the scan, never hardcode blindly.
+One Activity, plain views, no AndroidX — the app is small enough that a
+dependency wall buys nothing. JUnit4 is test-only.
 
-- **D5 — Device discovery: VID 0x046D gate, PID preference list, no PID lock.**
-  C092 and C09D are known-good LIGHTSYNC PIDs (sorted first); every other
-  Logitech device is still listed and diagnosable but marked "unknown model".
-  Change-trigger: a new LIGHTSYNC PID confirmed by hardware evidence.
+### Zero permissions
 
-- **D6 — Zero runtime dependencies, no AndroidX, plain Activity + XML.**
-  Why: the whole app is one Activity, one USB manager class, protocol objects,
-  one diagnostics formatter. Compose/AndroidX would add a dependency wall for
-  zero benefit. JUnit4 is test-only.
-  Change-trigger: a second screen or navigation need — then AndroidX, not before.
+The manifest requests nothing — not even INTERNET. Nothing can leave the
+device (see PRIVACY.md).
 
-- **D7 — Toolchain: AGP 8.9.2, Kotlin 2.1.10, Gradle wrapper 8.13, JDK 17,
-  compileSdk/targetSdk 35, minSdk 24.**
-  Why: the mutually-compatible verified set; AGP 8.9.x officially pairs with
-  Gradle 8.x and JDK 17; compileSdk 35 is the newest stable AGP 8.9 supports.
-  Change-trigger: a newer AGP needing compileSdk 36+ — move the whole matrix
-  together, never mix.
+### Persistence is app-side only
 
-- **D8 — USB permission: explicit + FLAG_MUTABLE PendingIntent (S+),
-  RECEIVER_NOT_EXPORTED (33+).**
-  Why: UsbManager mutates the permission broadcast intent to attach
-  EXTRA_DEVICE/EXTRA_PERMISSION_GRANTED; an immutable PendingIntent silently
-  breaks the flow on Android 12+, and runtime receivers must declare
-  exported-ness on 13+. Confirmed by a real merged fix (hradio/omri-usb PR 1).
-  Change-trigger: none; this is required platform behavior.
+Configuration lives in SharedPreferences. The mouse's onboard memory is
+never written.
 
-- **D9 — Device never cached across commands.**
-  Why: Android re-creates UsbDevice objects on reconnect; a stale handle turns
-  into a silent failure. Every operation re-enumerates and matches by
-  deviceName. Change-trigger: none.
+### Honest results
 
-- **D10 — Results are honest by construction.**
-  "Sent successfully" requires a non-negative write count for both packets;
-  responses are reported when read, their absence is stated, and visual
-  confirmation is explicitly left to the user.
-  Change-trigger: never.
+"Sent successfully" means a non-negative write count on every packet.
+Responses are reported when read, absence stated, visual confirmation left
+to the user.
 
-- **D11 — Diagnostics from day one, COPY + SHARE.**
-  Change-trigger: none.
+### Device handles are never cached
 
-- **D12 — Unit tests assert reference-extracted vectors.**
-  Change-trigger: none.
+UsbDevice objects are re-enumerated on every operation; stale handles
+become silent failures after reconnect.
+
+## Release engineering
+
+### Versioning
+
+versionCode increments monotonically; versionName is semantic (2.2.0 =
+public beta packaging on a byte-identical 2.1.1 app).
+
+### Pinned debug key
+
+CI signs all debug APKs with one committed keystore so installs supersede
+cleanly. It is a convenience, not an authenticity guarantee; production
+signing comes from GitHub Actions Secrets (RELEASE_SIGNING.md).
+
+### Display name, applicationId
+
+The display name is "G102 Controller" (descriptive, nominative).
+applicationId `com.kaiser0733.g102controller` never changes — renaming
+would break upgrades.

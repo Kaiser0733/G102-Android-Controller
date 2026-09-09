@@ -56,7 +56,8 @@ jobs:
           prerelease: true
           generate_release_notes: false
           body: |
-            **DRAFT — not yet public. Awaiting owner review, demo video and screenshots.**
+            **DRAFT — not yet public. Awaiting maintainer review, demo
+            video and screenshots.**
 
             Unofficial Android controller for Logitech G102/G203 LIGHTSYNC mice.
             Not affiliated with, endorsed by, sponsored by, or supported by Logitech.
@@ -78,10 +79,10 @@ jobs:
             Installs directly over previous versions (2.x signed with the
             same key).
 
-            **This is a debug-key-signed beta APK** — authenticity equals
-            "built from this repository's CI", not an owner-held production
-            key. Production signing arrives with the owner's keystore
-            (see RELEASE_SIGNING.md).
+            **This is a debug-key-signed beta APK** — authenticity means
+            "built from this repository's CI", not a maintainer-held
+            production key. Production signing arrives with a private
+            keystore (see RELEASE_SIGNING.md in the repo).
 
             ## Known limitations
             - Lighting is runtime-only: the mouse reverts to onboard

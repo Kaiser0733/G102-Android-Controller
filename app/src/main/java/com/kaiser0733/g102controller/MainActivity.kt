@@ -111,7 +111,7 @@ class MainActivity : Activity() {
         setupControls()
         registerUsbEvents()
         renderConfig()
-        onLog("Launch 2.1.0: explicit commands only; preview and auto-apply disabled.")
+        onLog("Launch 2.2.0: explicit commands only; preview and auto-apply disabled.")
     }
 
     /**

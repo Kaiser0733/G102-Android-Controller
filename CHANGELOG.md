@@ -11,7 +11,7 @@ project packaging only.
 - MIT license, third-party notices, licensing rationale
 - Public documentation set: README rewrite, PRIVACY, SECURITY, CONTRIBUTING,
   CODE_OF_CONDUCT, ARCHITECTURE, COMPATIBILITY, TROUBLESHOOTING,
-  RELEASE_SIGNING, LAUNCH_PLAN, COMMERCIALIZATION_NOTES, demo recording guide
+  RELEASE_SIGNING
 - Release workflow with optional production signing from GitHub Actions
   secrets (unsigned-artifact fallback; never mislabeled)
 - Issue templates (bug / compatibility / feature) and PR template

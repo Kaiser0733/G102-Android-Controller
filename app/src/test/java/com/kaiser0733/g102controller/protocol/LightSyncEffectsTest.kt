@@ -18,10 +18,10 @@ class LightSyncEffectsTest {
 
     private fun hex(p: ByteArray) = ProtocolPackets.toHex(p)
 
-    // ===== v1 REGRESSION PIN — the physically verified RGB OFF sequence =====
+    // ===== RGB OFF regression vector (verified on hardware) =====
 
-    @Test fun regression_rgbOffSequence_isPhysicallyVerifiedV1() {
-        // v1 sent EXACTLY: mode switch 10ff0e5b010305 + solid black
+    @Test fun rgbOffSequence_matchesKnownGoodVector() {
+        // v1 sequence: mode switch 10ff0e5b010305 + solid black
         // 11ff0e1b00010000000000000000000001000000 (apply flag at byte 16).
         val packets = RgbCommandComposer.composeRgbOff()
         assertEquals(2, packets.size)

@@ -41,5 +41,5 @@ Logitech mouse. It does not:
 
 - Debug/beta APKs: pinned debug key (public, convenience only — authenticity
   cannot be proven from it). See [RELEASE_SIGNING.md](RELEASE_SIGNING.md).
-- Production APKs: owner-held key once configured; fingerprint published in
+- Production APKs: maintainer-held key once configured; fingerprint published in
   each release.

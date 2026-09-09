@@ -14,7 +14,7 @@ import com.kaiser0733.g102controller.settings.LightingConfig
  */
 object RgbCommandComposer {
 
-    /** The v1 physically-verified OFF sequence — DO NOT CHANGE (regression-pinned). */
+    /** RGB-off command sequence; byte-for-byte covered by regression tests. */
     fun composeRgbOff(): List<ByteArray> = listOf(
         ProtocolPackets.buildDisableOnboardMemoryPacket(),
         ProtocolPackets.buildRgbOffPacket(),

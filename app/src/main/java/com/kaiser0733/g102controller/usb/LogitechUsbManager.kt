@@ -120,7 +120,7 @@ class LogitechUsbManager(
             .map { device.getInterface(it) }
             .filter { it.interfaceClass == UsbConstants.USB_CLASS_HID }
 
-        // Preference order (adversarial-review hardened):
+        // Preference order:
         //  1. the classic vendor node: HID class, subclass 0, protocol 0 (G102/G203 iface 1)
         //  2. any HID interface that is neither the boot mouse (1/2) nor a keyboard (1/1)
         //  3. the only HID interface, if there is exactly one
