@@ -2,7 +2,7 @@ name: Android Build
 
 on:
   push:
-    branches: [main, 'hotfix/**', 'ui/**', 'release/**']
+    branches: [main, 'hotfix/**', 'ui/**', 'release/**', 'chore/**']
   workflow_dispatch:
 
 concurrency:
