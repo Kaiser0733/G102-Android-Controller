@@ -1,0 +1,73 @@
+name: Hardware compatibility report
+description: Report how the app behaved with your mouse/device
+labels: ["compatibility"]
+body:
+  - type: input
+    id: mouse-model
+    attributes:
+      label: Mouse exact model
+      placeholder: "Logitech G203 LIGHTSYNC"
+    validations:
+      required: true
+  - type: input
+    id: vidpid
+    attributes:
+      label: "VID/PID (from USB diagnostics)"
+      placeholder: "046D:C092"
+    validations:
+      required: true
+  - type: input
+    id: android
+    attributes:
+      label: Android device and version
+      placeholder: "Samsung Galaxy Tab A9+, Android 16"
+    validations:
+      required: true
+  - type: dropdown
+    id: rgb-off
+    attributes:
+      label: RGB OFF works?
+      options: ["Yes", "No", "Not tested"]
+    validations:
+      required: true
+  - type: dropdown
+    id: rgb-on
+    attributes:
+      label: RGB ON works?
+      options: ["Yes", "No", "Not tested"]
+    validations:
+      required: true
+  - type: dropdown
+    id: solid
+    attributes:
+      label: Solid color works?
+      options: ["Yes", "No", "Not tested"]
+    validations:
+      required: true
+  - type: dropdown
+    id: brightness
+    attributes:
+      label: Brightness works?
+      options: ["Yes", "No", "Not tested"]
+    validations:
+      required: true
+  - type: dropdown
+    id: effects
+    attributes:
+      label: Effects (Cycle/Wave/Breathe/Blend) work?
+      options: ["Yes", "No", "Not tested"]
+    validations:
+      required: true
+  - type: dropdown
+    id: zones
+    attributes:
+      label: Zones work?
+      options: ["Yes", "No", "Not tested"]
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+    validations:
+      required: false

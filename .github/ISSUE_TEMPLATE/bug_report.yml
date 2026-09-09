@@ -1,0 +1,86 @@
+name: Bug report
+description: Something went wrong with the app
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! Please attach diagnostics if you can
+        (in-app: USB DIAGNOSTICS → COPY DIAGNOSTICS).
+  - type: input
+    id: android-device
+    attributes:
+      label: Android device
+      placeholder: "Samsung Galaxy Tab A9+"
+    validations:
+      required: true
+  - type: input
+    id: android-version
+    attributes:
+      label: Android version
+      placeholder: "Android 16"
+    validations:
+      required: true
+  - type: input
+    id: mouse-model
+    attributes:
+      label: Mouse exact model
+      placeholder: "Logitech G102 LIGHTSYNC"
+    validations:
+      required: true
+  - type: input
+    id: vidpid
+    attributes:
+      label: "VID/PID (from USB diagnostics)"
+      placeholder: "046D:C092"
+    validations:
+      required: false
+  - type: input
+    id: connection
+    attributes:
+      label: Connection method
+      placeholder: "USB OTG adapter"
+    validations:
+      required: false
+  - type: input
+    id: app-version
+    attributes:
+      label: App version
+      placeholder: "2.1.1"
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: "1. Connect mouse 2. Press RGB OFF 3. ..."
+    validations:
+      required: false
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics output
+      description: Review before posting — includes device names and command bytes
+    validations:
+      required: false
+  - type: checkboxes
+    id: cursor
+    attributes:
+      label: Did the Android cursor/input become unstable?
+      options:
+        - label: "No"
+          required: false
+        - label: "Yes (describe above)"
+          required: false

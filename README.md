@@ -1,87 +1,146 @@
-# G102-Android-Controller
+# G102 Controller
 
-Control the RGB lighting of a **Logitech G102 / G203 LIGHTSYNC** mouse
-directly from Android over USB/OTG. Built for a Samsung Galaxy Tab A9+
-(Android 16), no PC, no G HUB, no root.
+An unofficial Android app that controls the RGB lighting of **Logitech
+G102 / G203 LIGHTSYNC** mice directly over USB — no PC, no G HUB, no root.
 
-**v1 (RGB OFF) is physically verified on real hardware.** v2 adds the full
-controller: RGB ON, custom colors, brightness, effects, zones — all riding
-the same proven USB/HID++ transport. The v1 baseline is preserved as the git
-tag `v1.0-rgb-off-working`.
-
-## 2.0.2 runtime hotfix (versionCode 4)
-
-Live USB preview and auto-apply are disabled. Startup, resume, reconnect,
-permission broadcasts and configuration changes send no lighting packets.
-Only RGB ON, RGB OFF and APPLY initiate a short USB sequence. No polling.
-An in-flight transfer may finish its existing bounded timeout after stop;
-remaining packets are cancelled and the connection is released in finally.
-
-The pointer-ghosting mechanism is not physically proven. This release removes
-the repeated automatic USB path and awaits a Tab A9+ / G102 retest.
-See [HOTFIX-2.0.2.md](HOTFIX-2.0.2.md) for review evidence and test steps.
+> **Unofficial:** this project is not affiliated with, endorsed by,
+> sponsored by, or supported by Logitech. Product names are used only to
+> identify hardware compatibility.
 
 ## What it does
 
-- **RGB OFF** — the physically-verified v1 path: mode switch + solid black
-  (BLACK_FALLBACK; no true LED-disable effect is known for this family).
-- **RGB ON** — restores your saved lighting (any effect packet re-enables
-  lighting per the reference; physical behavior still needs testing).
-- **Custom solid color** — presets + hex input (#B76E79), then APPLY.
-- **Brightness** — native protocol brightness for Cycle/Wave/Breathe/Blend;
-  solid uses honest RGB-scaling (documented, not claimed as hardware).
-- **Effects** — Solid, Cycle, Wave (direction), Breathe, Blend, Zones —
-  every effect ID byte-verified against the reference implementation.
-- **Zones** — 3 independently addressable zones via the 0x12 triple command.
-- **Persistence** — your config is remembered app-side (never written to
-  mouse onboard memory). Auto-apply is disabled in this hotfix.
+Turn your mouse lighting off, on, or into any color or LIGHTSYNC effect —
+straight from an Android phone or tablet with a USB OTG connection. The
+app talks HID++ directly to the mouse over Android's USB Host API.
 
-## Install & update
+## Why this exists
 
-Download the latest **G102-Controller-debug** artifact from Actions and
-install. From v2 onward every build is signed with one pinned keystore, so
-updates install directly over the previous version — no uninstall needed.
-(The v1 -> v2 step needs one last uninstall: v1 was signed by GitHub's
-throwaway runner key.)
+Logitech's official lighting software (G HUB) is desktop-only. If your
+computer is a phone or tablet — or you just want lighting control without
+installing anything on your PC — this app does it with nothing but a cable
+and an OTG adapter.
 
-## Build
+## Features
 
-GitHub Actions is the build environment: push to `main` or run the workflow
-manually. CI runs unit tests, lint, and assembleDebug, then uploads the APK
-artifact.
+- **RGB OFF** — the physically-verified baseline (mode switch + solid
+  black; this hardware family has no separate LED-disable command)
+- **RGB ON** — restore lighting with your saved configuration
+- **Custom solid colors** — presets or any hex value (`#B76E79`)
+- **Brightness** — native protocol brightness for Cycle/Wave/Breathe/
+  Blend; solid color uses RGB scaling (labeled honestly — the protocol has
+  no solid-brightness byte)
+- **LIGHTSYNC effects** — Solid, Cycle, Wave (left/right), Breathe, Blend
+- **Zone colors** — three independently addressable LED zones
+- **Responsive UI** — phone/tablet, portrait/landscape
+- **Local-only** — zero permissions (not even INTERNET), no accounts, no
+  telemetry; your settings stay on your device
+- **USB diagnostics** — every descriptor and command byte, copyable for bug
+  reports
 
-## Diagnostics
+Commands are sent only when **you** press a button. The app never sends USB
+traffic on startup, rotation, reconnect, or while you're adjusting sliders.
 
-The **USB DIAGNOSTICS** section logs every descriptor and command with exact
-hex bytes; **COPY DIAGNOSTICS** puts it on the clipboard for bug reports.
+## Tested hardware
 
-## Protocol
+| Status | Device | Android host |
+|--------|--------|--------------|
+| ✅ Physically verified | Logitech G102 LIGHTSYNC (`046D:C092`) | Samsung Galaxy Tab A9+, Android 16, USB OTG |
+| 🧪 Expected, untested | Logitech G203 LIGHTSYNC (same `046D:C092` family) | — |
 
-See [PROTOCOL.md](PROTOCOL.md). Summary — HID++ reports over HID SET_REPORT
-control transfers to the vendor interface:
+G203 LIGHTSYNC shares the G102's USB identity and LIGHTSYNC command set,
+but only the G102 row is physically verified. See
+[COMPATIBILITY.md](COMPATIBILITY.md) for the full matrix and how to add
+your device.
 
-- mode switch (short): `10 FF 0E 5B 01 03 05`
-- solid (long): `11 FF 0E 1B 00 01 RR GG BB … 01 @16`
-- cycle/wave/breathe/blend: same header, effect IDs 02/03/04/06
-- zones: `11 FF 12 1B 01 … 02 … 03 …` + apply `11 FF 12 7B …`
+## Installation
 
-USB identity: VID 046D, PIDs C092 / C09D (G102/G203 LIGHTSYNC family).
+1. Download the APK from [Releases](https://github.com/Kaiser0733/G102-Android-Controller/releases)
+2. Open it; Android will ask to allow installs from your browser/files app —
+   allow it once
+3. Connect your mouse via USB OTG adapter/cable
+4. Open the app, tap **GRANT USB ACCESS** when Android asks
+5. Use the controls
 
-## Limitations
+No root. No PC. No Termux. Android 7.0+ (API 24) with USB Host.
 
-- Lighting resets on mouse power-cycle (runtime control only, by design).
-- Only RGB OFF is physically verified so far; v2 features await hardware
-  testing.
-- Auto-apply and live USB preview are unavailable in 2.0.2.
+## Usage
+
+1. **RGB OFF** — lighting turns off
+2. **RGB ON** — lighting returns (your saved config)
+3. Pick a color (preset or hex) → **APPLY COLOR**
+4. Pick an effect (Cycle/Wave/Breathe/Blend/Zones) → adjust speed or
+   direction → **APPLY**
+5. Rotate freely — the layout adapts; no command is sent by rotation
+
+Lighting is runtime control: the mouse reverts to its onboard configuration
+after power-cycling. The app never writes the mouse's onboard memory.
 
 ## Safety
 
-Runtime lighting control only. No firmware operations, no onboard memory
-modification, no DFU/bootloader commands, nothing irreversible.
+This app sends **runtime lighting commands only**. There is no firmware
+flashing, no EEPROM/onboard-memory writes, no DFU/bootloader commands —
+nothing irreversible exists in the codebase. Disconnect the mouse and it
+returns to normal.
 
-## References & licenses
+## Screenshots
 
-- [smasty/g203-led](https://github.com/smasty/g203-led) — MIT. All command
-  vectors derive from its behavior; logic reimplemented in Kotlin.
-- [libratbag](https://github.com/libratbag/libratbag) — MIT. HID++ background
-  knowledge.
+Coming soon — real device screenshots will be added here.
+
+## Demo video
+
+Coming soon.
+
+## Known limitations
+
+- Lighting is runtime-only; the mouse reverts to onboard lighting after
+  power-cycle
+- Solid-color brightness is RGB scaling, not a native protocol brightness
+  byte (labeled in-app)
+- Landscape layouts exist for phone/tablet, but one real-device report
+  (Tab A9+) observed the effect selector not appearing in landscape while
+  portrait worked; unresolved — if you see it, file a bug report with your
+  device and diagnostics
+
+## Troubleshooting
+
+See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) — covers mouse detection,
+USB permission, unsupported devices, cursor behavior, and how to file a
+useful issue.
+
+## Diagnostics
+
+The in-app **USB DIAGNOSTICS** panel shows every USB descriptor, the
+selected interface, permission state, and each command with exact hex
+bytes. **COPY DIAGNOSTICS** puts it on the clipboard for bug reports
+(it includes device names and command bytes — review before posting
+publicly).
+
+## Building
+
+```bash
+./gradlew assembleDebug          # debug APK
+./gradlew testDebugUnitTest      # JVM tests (protocol vectors + logic)
+./gradlew lintDebug               # Android lint
+```
+
+Requirements: JDK 17, Android SDK 35. GitHub Actions builds every push —
+see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Documentation
+
+- [PROTOCOL.md](PROTOCOL.md) — the HID++/LIGHTSYNC byte maps and provenance
+- [ARCHITECTURE.md](ARCHITECTURE.md) — layer design and why
+- [COMPATIBILITY.md](COMPATIBILITY.md) — verified/tested hardware
+- [PRIVACY.md](PRIVACY.md) — what data (doesn't) leave your device
+- [CHANGELOG.md](CHANGELOG.md)
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). Hardware reports welcome —
+VID/PID + Android version + what worked.
+
+## License
+
+MIT — see [LICENSE](LICENSE). Third-party notices:
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md); licensing rationale:
+[LICENSING.md](LICENSING.md).

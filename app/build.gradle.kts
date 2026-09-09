@@ -13,8 +13,8 @@ android {
         applicationId = "com.kaiser0733.g102controller"
         minSdk = 24
         targetSdk = 35
-        versionCode = 6
-        versionName = "2.1.1"
+        versionCode = 7
+        versionName = "2.2.0"
     }
 
     signingConfigs {
@@ -35,6 +35,23 @@ android {
         }
         release {
             isMinifyEnabled = false
+            // Optional production signing, wired by CI from GitHub Actions
+            // secrets (see RELEASE_SIGNING.md). Absent env vars -> unsigned
+            // release artifact; never a silent debug-key fallback.
+            val ksFile = System.getenv("ANDROID_KEYSTORE_FILE")
+            val ksPassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+            val ksAlias = System.getenv("ANDROID_KEY_ALIAS")
+            val ksKeyPassword = System.getenv("ANDROID_KEY_PASSWORD")
+            if (ksFile != null && ksPassword != null && ksAlias != null &&
+                ksKeyPassword != null && rootProject.file(ksFile).exists()
+            ) {
+                signingConfig = signingConfigs.create("production") {
+                    storeFile = rootProject.file(ksFile)
+                    storePassword = ksPassword
+                    keyAlias = ksAlias
+                    keyPassword = ksKeyPassword
+                }
+            }
         }
     }
 

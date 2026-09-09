@@ -1,0 +1,16 @@
+name: Feature request
+description: Suggest a new capability
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What should the app be able to do?
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Any context (device, use case)
+    validations:
+      required: false

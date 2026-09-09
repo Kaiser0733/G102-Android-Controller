@@ -1,5 +1,13 @@
 # LIGHTSYNC RGB-OFF — protocol notes (G102 / G203 LIGHTSYNC)
 
+> **Reverse-engineered, not official.** Nothing here is documented by
+> Logitech. All command behavior was derived from the MIT-licensed
+> g203-led reference implementation and cross-checked against libratbag
+> HID++ knowledge (see References). Facts below are labeled by evidence
+> level: **[verified]** = physically confirmed on real hardware,
+> **[reference]** = byte-verified against the reference implementation,
+> **[assumed]** = reasonable inference, not independently confirmed.
+
 ## Provenance
 
 Every byte below is derived from the MIT-licensed reference implementation
@@ -81,7 +89,21 @@ effect is known for this hardware family, so the app reports it honestly.
   translation is a HID++ 2.0 concept that does not apply to this command path.
 - **Zone-specific commands**: the reference's color-effect command lights all
   zones with one packet (its `triple` command is a different, optional path).
-- **DPI / profiles / macros / onboard memory writes**: v1 scope is RGB off only.
+- **DPI / profiles / macros / onboard memory writes**: out of scope; no such
+  command exists in this app.
+
+## v2 extensions (same transport, reference-verified vectors)
+
+Solid/Cycle/Wave/Breathe/Blend reuse the long-report header with effect IDs
+01/02/03/04/06 (byte 4), rate bytes (milliseconds, little-endian, bytes
+9-10 for cycle-class effects), direction byte for wave (01 = right,
+06 = left), and a native brightness byte (byte 11) for cycle-class effects.
+Zones use feature 0x12 (triple set 0x1B + apply 0x7B). All v2 vectors are
+**[reference]** — byte-verified against the reference's formatted output by
+script before implementation, and frozen in the unit-test suite. Physical
+verification of individual v2 effect bytes on hardware: partial (G102
+LIGHTSYNC, primary test environment); see COMPATIBILITY.md for what is
+physically verified per release.
 
 ## References & licenses
 

@@ -2,6 +2,41 @@
 
 Every non-obvious choice, with What / Why / Change-trigger.
 
+## Public-release decisions (2.2.0-beta)
+
+- **D22 — Public beta = 2.2.0 (code 7), app behavior byte-identical to
+  2.1.1-stable-physical.** The release-readiness branch changes only
+  documentation, licensing, CI, and release engineering; the version bump
+  is metadata so the public artifact is distinguishable and installable
+  over 2.1.1 (same pinned debug key). The physically verified baseline
+  remains tag `v2.1.1-stable-physical` (commit `c1c4cc1`); the usb/,
+  protocol/, controller/ trees are diff-verified untouched.
+  Change-trigger: any functional app change before release would require
+  re-verification.
+
+- **D23 — License: MIT.** All incorporated/consulted upstreams are MIT
+  (g203-led, libratbag) or Apache-2.0 (Kotlin stdlib, Android SDK);
+  nothing forces copyleft. Protocol facts are interoperability knowledge,
+  reimplemented in original Kotlin. See LICENSE, LICENSING.md,
+  THIRD_PARTY_NOTICES.md. Change-trigger: incorporation of copyleft code
+  (do not).
+
+- **D24 — Production signing via GitHub Actions Secrets, never in git.**
+  The committed debug keystore stays for beta continuity only; release.yml
+  signs from ANDROID_KEYSTORE_BASE64/PASSWORD/ALIAS/KEY_PASSWORD secrets
+  when present, otherwise produces a clearly-labeled UNSIGNED artifact.
+  Never silent debug fallback for release. See RELEASE_SIGNING.md.
+
+- **D25 — Unofficial project, nominative naming.** "Logitech", "G102",
+  "LIGHTSYNC" used only for compatibility identification; every public
+  surface carries the no-affiliation disclaimer. Display name stays
+  "G102 Controller" (descriptive, nominative); applicationId never changes.
+  Change-trigger: legal complaint or a stronger public brand name.
+
+- **D26 — Privacy posture = zero permissions.** The manifest declares no
+  permissions (not even INTERNET); no analytics/telemetry/accounts exist
+  and none may be added (PR checklist + review). See PRIVACY.md.
+
 ## 2.0.2 hotfix decisions (supersede D17 and D19)
 
 - Remove live USB preview entirely. Every configuration callback changes local

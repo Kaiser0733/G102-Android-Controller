@@ -1,0 +1,101 @@
+name: Public Beta Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Tag for the draft release (e.g. v2.2.0-beta.1)'
+        required: true
+      release_title:
+        description: 'Release title'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  beta-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Guards + tests
+        run: |
+          python3 scripts/check_hotfix.py
+          python3 scripts/check_layouts.py
+          ./gradlew testDebugUnitTest lintDebug --stacktrace
+
+      - name: Build beta APK (pinned debug key)
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: Verify APK identity and pinned signature
+        run: python3 scripts/verify_apk.py
+
+      - name: Compute APK checksum
+        run: |
+          cd app/build/outputs/apk/debug
+          sha256sum app-debug.apk > app-debug.apk.sha256
+          cat app-debug.apk.sha256
+
+      - name: Create DRAFT GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.release_tag }}
+          name: ${{ inputs.release_title }}
+          draft: true
+          prerelease: true
+          generate_release_notes: false
+          body: |
+            **DRAFT — not yet public. Awaiting owner review, demo video and screenshots.**
+
+            Unofficial Android controller for Logitech G102/G203 LIGHTSYNC mice.
+            Not affiliated with, endorsed by, sponsored by, or supported by Logitech.
+
+            ## What it does
+            - RGB ON / OFF, custom solid colors (hex + presets)
+            - Brightness (native for Cycle/Wave/Breathe/Blend; RGB-scaling for solid)
+            - LIGHTSYNC effects: Solid, Cycle, Wave (direction), Breathe, Blend, Zones
+            - Zero Android permissions — no network, no analytics, fully local
+            - Responsive phone/tablet portrait/landscape UI
+            - USB diagnostics with copy/share for bug reports
+
+            ## Physically verified environment
+            - Samsung Galaxy Tab A9+ (Android 16) + Logitech G102 LIGHTSYNC (046D:C092) via USB OTG
+
+            ## Install
+            Download the APK, allow installs from your browser when Android
+            asks, connect the mouse via OTG, grant USB access in the app.
+            Installs directly over previous versions (2.x signed with the
+            same key).
+
+            **This is a debug-key-signed beta APK** — authenticity equals
+            "built from this repository's CI", not an owner-held production
+            key. Production signing arrives with the owner's keystore
+            (see RELEASE_SIGNING.md).
+
+            ## Known limitations
+            - Lighting is runtime-only: the mouse reverts to onboard
+              lighting after power-cycle (no onboard-memory writes, ever)
+            - Only the G102 LIGHTSYNC row is physically verified; G203
+              LIGHTSYNC is expected (same USB identity) but untested
+            - Solid-color brightness is RGB scaling, not a native protocol
+              brightness byte
+
+            ## Feedback
+            Please open a **Hardware Compatibility Report** issue with your
+            mouse model, VID/PID (from the app's USB diagnostics), Android
+            device/version — real compatibility data is what this beta is
+            for.
+          files: |
+            app/build/outputs/apk/debug/app-debug.apk
+            app/build/outputs/apk/debug/app-debug.apk.sha256
