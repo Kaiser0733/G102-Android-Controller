@@ -13,7 +13,7 @@ sdk = Path(os.environ.get('ANDROID_HOME') or os.environ['ANDROID_SDK_ROOT'])
 tools = sorted((sdk / 'build-tools').glob('*/apksigner'))[-1].parent
 apk = Path('app/build/outputs/apk/debug/app-debug.apk')
 badging = run(str(tools / 'aapt'), 'dump', 'badging', str(apk)).splitlines()[0]
-for required in ("name='com.kaiser0733.g102controller'", "versionCode='5'", "versionName='2.1.0'"):
+for required in ("name='com.kaiser0733.g102controller'", "versionCode='6'", "versionName='2.1.1'"):
     assert required in badging, badging
 signing = run(str(tools / 'apksigner'), 'verify', '--print-certs', str(apk))
 certificate = subprocess.check_output(['keytool', '-exportcert', '-keystore', 'debug.keystore',
